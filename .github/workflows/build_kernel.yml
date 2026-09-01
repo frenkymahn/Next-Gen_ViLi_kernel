@@ -50,7 +50,7 @@ jobs:
 
     - name: Package with AnyKernel3
       run: |
-        git clone https://github.com AnyKernel3
+        git clone https://github.com/osm0sis/AnyKernel3.git
         cp out/arch/arm64/boot/Image AnyKernel3/
         # If your device uses DTB/DTBO blobs, pull them from out/arch/arm64/boot/dts/
         cp out/arch/arm64/boot/dtb AnyKernel3/ || true 
