@@ -44,7 +44,7 @@ jobs:
 
         # 2. Compile Image
         # Add KCFLAGS to skip strict parameter evaluation errors
-        # make -j$(nproc --all) O=out KCFLAGS="-Wno-error -Wno-implicit-function-declaration"
+        make -j$(nproc --all) O=out KCFLAGS="-Wno-error -Wno-implicit-function-declaration"
 
       
 
