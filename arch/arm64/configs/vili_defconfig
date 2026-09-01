@@ -6949,4 +6949,19 @@ CONFIG_ARCH_HAS_DEVMEM_IS_ALLOWED=y
 # CONFIG_DEBUG_ALIGN_RODATA is not set
 # CONFIG_ARM64_RELOC_TEST is not set
 # CONFIG_CORESIGHT is not set
+
+# Enable EROFS Support
+CONFIG_EROFS_FS=y
+CONFIG_EROFS_FS_XATTR=y
+CONFIG_EROFS_FS_POSIX_ACL=y
+CONFIG_EROFS_FS_SECURITY=y
+CONFIG_EROFS_FS_ZIP=y
+
+#Fix Overlay and Namespace Issues
+CONFIG_OVERLAY_FS=y
+CONFIG_NAMESPACES=y
+CONFIG_USER_NS=y
+
+#Disable Intentional Verification Check Blocking
+# CONFIG_ can vary depending on exact source code, ensure Android Verified Boot (AVB) changes aren't strictly enforcing matching verification hashes if using non-dynamic partition ports.
 # end of Kernel hacking
