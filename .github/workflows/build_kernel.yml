@@ -1,0 +1,65 @@
+name: NEXT-GEN ViLi kernel 
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Set up Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential cpio curl flex git libssl-dev libtinfo5 libncurses5-dev python3 zip unzip tzdata
+
+    - name: Fetch Toolchain (Clang)
+      run: |
+        mkdir toolchain
+        cd toolchain
+        # Fetching a modern AOSP Clang toolchain highly compatible with Android 14+
+        wget https://googlesource.com
+        tar -xzf clang-r522040.tar.gz
+        echo "${PWD}/bin" >> $GITHUB_PATH
+
+    - name: Compile Kernel
+      run: |
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export HEADER_ARCH=arm64
+        export KBUILD_BUILD_USER=FrenkyMahn
+        
+        # Define paths for compilation
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-android-
+        export CROSS_COMPILE_COMPAT=arm-linux-androideabi-
+
+        # 1. Regenerate config
+        make O=out vili_defconfig # Replace with your exact defconfig name
+
+        # 2. Compile Image
+        make -j$(nproc --all) O=out LOCALVERSION=NEXT-GEN
+      
+
+    - name: Package with AnyKernel3
+      run: |
+        git clone https://github.com AnyKernel3
+        cp out/arch/arm64/boot/Image AnyKernel3/
+        # If your device uses DTB/DTBO blobs, pull them from out/arch/arm64/boot/dts/
+        cp out/arch/arm64/boot/dtb AnyKernel3/ || true 
+        
+        cd AnyKernel3
+        # Adjust anykernel.sh variables inside script to accept any A14-A17 version matching
+        sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
+        
+        zip -r9 ../HyperOS-Vili-Kernel.zip * -x .git* README.md
+
+    - name: Upload Flashable Kernel Zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: HyperOS-Vili-Kernel
+        path: ./HyperOS-Vili-Kernel.zip
+        
