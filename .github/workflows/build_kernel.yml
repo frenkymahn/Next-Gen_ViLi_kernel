@@ -43,7 +43,8 @@ jobs:
         make O=out vili_defconfig # Replace with your exact defconfig name
 
         # 2. Compile Image
-        make -j$(nproc --all) O=out LOCALVERSION=NEXT-GEN
+        make -j$(nproc --all) O=out LOCALVERSION=NEXT-GEN KCFLAGS="-w"
+
       
 
     - name: Package with AnyKernel3
