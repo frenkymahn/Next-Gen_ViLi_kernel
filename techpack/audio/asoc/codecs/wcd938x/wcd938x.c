@@ -1341,7 +1341,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *component =
 				snd_soc_dapm_to_component(w->dapm);
 	struct wcd938x_priv *wcd938x = snd_soc_component_get_drvdata(component);
-	u16 dmic_clk_reg, dmic_clk_en_reg;
+	u16 dmic_clk_reg = 0, dmic_clk_en_reg = 0;	
 	s32 *dmic_clk_cnt;
 	u8 dmic_ctl_shift = 0;
 	u8 dmic_clk_shift = 0;
