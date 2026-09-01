@@ -5,55 +5,42 @@
 #include "debug.h"
 #include "pci.h"
 
-enum cnss_dev_bus_type cnss_get_dev_bus_type(struct device *dev)
-{
-	if (!dev)
-		return CNSS_BUS_NONE;
-
-	if (!dev->bus)
-		return CNSS_BUS_NONE;
-
-	if (memcmp(dev->bus->name, "pci", 3) == 0)
-		return CNSS_BUS_PCI;
-	else
-		return CNSS_BUS_NONE;
-}
-
 enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
 {
-	int ret;
-	struct device *dev;
-	enum cnss_dev_bus_type bus_type = CNSS_BUS_NONE;
-    u32 bus_type_val
-	if (plat_priv->is_converged_dt) {
-		dev = &plat_priv->plat_dev->dev;
-		ret = of_property_read_u32(dev->of_node, "qcom,bus-type_val",
-					   &bus_type_val);
-		if (!ret && bus_type_val <= CNSS_BUS_USB)
-			cnss_pr_dbg("Got bus type[%u] from dt\n", bus_type_val);
-		else
-			cnss_pr_err("No bus type for converged dt\n");
+    int ret;
+    struct device *dev;
+    enum cnss_dev_bus_type bus_type_val = CNSS_BUS_NONE;
 
-		return bus_type_val;
-	}
+    if (plat_priv->is_converged_dt) {
+        dev = &plat_priv->plat_dev->dev;
+        ret = of_property_read_u32(dev->of_node, "qcom,bus-type-val",
+                                   &bus_type_val);
+        if (!ret && bus_type_val <= CNSS_BUS_USB)
+            cnss_pr_dbg("Got bus type[%u] from dt\n", bus_type_val);
+        else
+            cnss_pr_err("No bus type for converged dt\n");
 
-	/* Get bus type according to device id if it's not converged DT */
-	switch (plat_priv->device_id) {
-	case QCA6174_DEVICE_ID:
-	case QCA6290_DEVICE_ID:
-	case QCA6390_DEVICE_ID:
-	case QCN7605_DEVICE_ID:
-	case QCA6490_DEVICE_ID:
-	case WCN7850_DEVICE_ID:
-		bus_type = CNSS_BUS_PCI;
-		break;
-	default:
-		cnss_pr_err("Unknown device: 0x%lx\n", plat_priv->device_id);
-		break;
-	}
+        return bus_type_val;
+    }
 
-	return bus_type;
+    /* Get bus type according to device id if it's not converged DT */
+    switch (plat_priv->device_id) {
+        case QCA6174_DEVICE_ID:
+        case QCA6290_DEVICE_ID:
+        case QCA6390_DEVICE_ID:
+        case QCN7605_DEVICE_ID:
+        case QCA6490_DEVICE_ID:
+        case WCN7850_DEVICE_ID:
+            bus_type_val = CNSS_BUS_PCI;
+            break;
+        default:
+            cnss_pr_err("Unknown device: 0x%lx\n", plat_priv->device_id);
+            break;
+    }
+
+    return bus_type_val;
 }
+
 
 void *cnss_bus_dev_to_bus_priv(struct device *dev)
 {
