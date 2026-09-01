@@ -4,8 +4,8 @@
 #include "vili-sm8350.dtsi"
 
 / {
-	model = "Vili based on Qualcomm Technologies, Inc SM8350";
-	compatible = "qcom,lahaina-mtp", "qcom,lahaina", "qcom,mtp";
+	model = "Xiaomi 11T Pro";
+    compatible = "xiaomi,vili", "qcom,sm8350";
 	qcom,board-id = <0x10008 0>;
 	xiaomi,board-id = <0x8 0>;
 };
