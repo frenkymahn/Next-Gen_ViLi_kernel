@@ -1354,6 +1354,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 
 	switch (w->shift) {
 	case 0:
+		break;
 	case 1:
 		dmic_clk_cnt = &(wcd938x->dmic_0_1_clk_cnt);
 		dmic_clk_reg = WCD938X_DIGITAL_CDC_DMIC_RATE_1_2;
@@ -1363,6 +1364,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		dmic_ctl_shift = 0x00;
 		break;
 	case 2:
+		break;
 		dmic2_left_en = WCD938X_DIGITAL_CDC_DMIC2_CTL;
 	case 3:
 		dmic_clk_cnt = &(wcd938x->dmic_2_3_clk_cnt);
@@ -1373,6 +1375,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		dmic_ctl_shift = 0x01;
 		break;
 	case 4:
+		break;
 	case 5:
 		dmic_clk_cnt = &(wcd938x->dmic_4_5_clk_cnt);
 		dmic_clk_reg = WCD938X_DIGITAL_CDC_DMIC_RATE_3_4;
@@ -1382,6 +1385,7 @@ static int wcd938x_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 		dmic_ctl_shift = 0x02;
 		break;
 	case 6:
+		break;
 	case 7:
 		dmic_clk_cnt = &(wcd938x->dmic_6_7_clk_cnt);
 		dmic_clk_reg = WCD938X_DIGITAL_CDC_DMIC_RATE_3_4;
