@@ -1163,9 +1163,8 @@ hdd_convert_hang_reason(enum qdf_hang_reason reason)
  *
  * Return: 0 on success or failure reason
  */
-int wlan_hdd_send_hang_reason_event(struct hdd_context *hdd_ctx,
-					int reason, uint8_t *data,
-					size_t data_len)
+int wlan_hdd_send_hang_reason_event(struct hdd_context *hdd_ctx, int reason, uint8_t *data, long unsigned int data_len)
+
 {
 	struct sk_buff *vendor_event;
 	enum qca_wlan_vendor_hang_reason hang_reason;
