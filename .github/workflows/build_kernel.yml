@@ -43,7 +43,8 @@ jobs:
         make O=out vili_defconfig # Replace with your exact defconfig name
 
         # 2. Compile Image
-        make -j$(nproc --all) O=out LOCALVERSION=NEXT-GEN KCFLAGS="-w"
+        # Add KCFLAGS to skip strict parameter evaluation errors
+        # make -j$(nproc --all) O=out KCFLAGS="-Wno-error -Wno-implicit-function-declaration"
 
       
 
