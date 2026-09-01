@@ -13,7 +13,7 @@ jobs:
     - name: Set up Build Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential curl flex git libssl-dev libtinfo5 libncurses5-dev python3 zip unzip tzdata
+        sudo apt-get install -y bc bison build-essential curl flex git libssl-dev libncurses5-dev python3 zip unzip tzdata
 
     - name: Fetch Toolchain (Clang)
       run: |
