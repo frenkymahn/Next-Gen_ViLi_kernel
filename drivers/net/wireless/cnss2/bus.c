@@ -9,7 +9,7 @@ enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
 {
     int ret;
     struct device *dev;
-    enum cnss_dev_bus_type bus_type_val = CNSS_BUS_NONE;
+    u32 bus_type_val = CNSS_BUS_NONE;
 
     if (plat_priv->is_converged_dt) {
         dev = &plat_priv->plat_dev->dev;
@@ -20,7 +20,7 @@ enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
         else
             cnss_pr_err("No bus type for converged dt\n");
 
-        return bus_type_val;
+        return (enum cnss_dev_bus_type)bus_type_val;
     }
 
     /* Get bus type according to device id if it's not converged DT */
@@ -31,14 +31,13 @@ enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
         case QCN7605_DEVICE_ID:
         case QCA6490_DEVICE_ID:
         case WCN7850_DEVICE_ID:
-            bus_type_val = CNSS_BUS_PCI;
-            break;
+            return CNSS_BUS_PCI;
         default:
             cnss_pr_err("Unknown device: 0x%lx\n", plat_priv->device_id);
             break;
     }
 
-    return bus_type_val;
+    return CNSS_BUS_NONE;
 }
 
 
