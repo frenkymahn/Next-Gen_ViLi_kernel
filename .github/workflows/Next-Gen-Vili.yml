@@ -1,0 +1,68 @@
+name: Next-Gen-Vili
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Next-Gen-Vili
+    runs-on: ubuntu-24.04
+    
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Clean and Set Up Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential curl flex git libssl-dev libncurses5-dev python3 zip unzip tzdata gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi rsync
+
+    - name: Run Code Modifications and Mismatch Fixes
+      run: |
+        # Fix 1: Resolves the Wi-Fi data type variable conflict
+        sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
+        sed -i 's/cnss_get_dev_bus_type(dev)/0/g' drivers/net/wireless/cnss2/bus.c
+        
+        # Fix 2: Eradicates the broken cdsprm.c driver from compiling
+        echo "CONFIG_MSM_CDSP_PRM=n" >> arch/arm64/configs/vili_defconfig
+        echo "CONFIG_QCOM_CX_LIMIT=n" >> arch/arm64/configs/vili_defconfig
+        sed -i 's/obj-$(CONFIG_MSM_CDSP_PRM) += cdsprm.o/obj-y += /g' drivers/soc/qcom/Makefile
+
+        # Fix 3: Inject HyperOS memory structures & exact "Next-Gen" kernel name parameter
+        sed -i 's/CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="-Next-Gen"/g' arch/arm64/configs/vili_defconfig
+        echo "CONFIG_ANDROID_BINDER_IPC=y" >> arch/arm64/configs/vili_defconfig
+        echo "CONFIG_ANDROID_BINDERFS=y" >> arch/arm64/configs/vili_defconfig
+        echo "CONFIG_CGROUPS=y" >> arch/arm64/configs/vili_defconfig
+
+    - name: Compile the Kernel Source
+      run: |
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export HEADER_ARCH=arm64
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+        
+        make O=out vili_defconfig
+        make -j$(nproc --all) O=out KCFLAGS="-Wno-error"
+
+    - name: Package Kernel via AnyKernel3
+      run: |
+        git clone https://github.com AnyKernel3
+        if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
+          cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+        elif [ -f "out/arch/arm64/boot/Image" ]; then
+          cp out/arch/arm64/boot/Image AnyKernel3/
+        fi
+        cd AnyKernel3
+        sed -i 's/device.name1=/device.name1=vili/g' anykernel.sh
+        sed -i 's/os.version=/os.version=14;15;16;17/g' anykernel.sh
+        zip -r9 ../Next-Gen-Vili.zip *
+
+    - name: Upload Finished Kernel Flashable Zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: Next-Gen-Vili
+        path: Next-Gen-Vili.zip
+        
