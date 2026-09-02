@@ -17,7 +17,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential curl flex git libssl-dev libncurses5-dev python3 zip unzip tzdata gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi rsync
 
-        - name: Run Code Modifications and Mismatch Fixes
+            - name: Run Code Modifications and Mismatch Fixes
       run: |
         # Fix 1: Resolves the Wi-Fi data type variable conflict
         sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
@@ -33,11 +33,6 @@ jobs:
         echo "CONFIG_ANDROID_BINDER_IPC=y" >> arch/arm64/configs/vili_defconfig
         echo "CONFIG_ANDROID_BINDERFS=y" >> arch/arm64/configs/vili_defconfig
         echo "CONFIG_CGROUPS=y" >> arch/arm64/configs/vili_defconfig
-        
-        # Fix 4: Force link missing Qualcomm CNSS platform base requirements
-        echo "CONFIG_CNSS_QCA6490=y" >> arch/arm64/configs/vili_defconfig
-        echo "CONFIG_CNSS_GENL=y" >> arch/arm64/configs/vili_defconfig
-        echo "CONFIG_CNSS_UTILS=y" >> arch/arm64/configs/vili_defconfig
 
     - name: Compile the Kernel Source
       run: |
