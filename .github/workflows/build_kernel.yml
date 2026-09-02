@@ -19,8 +19,12 @@ jobs:
 
     - name: Patch Drivers for Clang Compatibility
       run: |
+          # Fix 1: Resolves the Wi-Fi driver type conflict error
           sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
+          
+          # Fix 2: Patch BOTH the source and header file to fix the CDSP priority type conflict
           sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx priority_idx/int priority_idx/g' drivers/soc/qcom/cdsprm.c
+          sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx/int/g' include/linux/soc/qcom/cdsprm_cxlimit.h
 
     - name: Build Kernel
       run: |
