@@ -17,14 +17,13 @@ jobs:
         sudo apt-get install -y gcc-aarch64-linux-gnu
         sudo apt-get install -y gcc-arm-linux-gnueabi
 
-    - name: Fetch Toolchain (Clang)
+    - name: Patch Drivers for Clang Compatibility
       run: |
-        mkdir toolchain
-        cd toolchain
-        # Fetching a modern AOSP Clang toolchain highly compatible with Android 14+
-        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-14.0.0_r40.tar.gz -O clang-r487747.tar.gz
-        tar -xzf clang-r487747.tar.gz
-        echo "${PWD}/bin" >> $GITHUB_PATH
+          # Fix 1: Resolves the Wi-Fi driver type conflict error
+          sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
+          
+          # Fix 2: Resolves the CDSP incomplete type error
+          sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx priority_idx/int priority_idx/g' drivers/soc/qcom/cdsprm.c
 
     - name: Build Kernel
       run: |
@@ -37,25 +36,22 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-android-
           export CROSS_COMPILE_ARM32=arm-linux-androideabi-
           
+          # Configure the kernel config profile
           make O=out vili_defconfig
           
-          # CHANGE THIS LINE BELOW TO INCLUDE THE KCFLAGS VARIABLE:
+          # Run the actual compilation process with error bypassing
           make -j$(nproc --all) O=out KCFLAGS="-Wno-error"
-      
-
+          
     - name: Package with AnyKernel3
       run: |
-        git clone https://github.com/osm0sis/AnyKernel3.git
-        cp out/arch/arm64/boot/Image AnyKernel3/
-        # If your device uses DTB/DTBO blobs, pull them from out/arch/arm64/boot/dts/
-        cp out/arch/arm64/boot/dtb AnyKernel3/ || true 
-        
-        cd AnyKernel3
-        # Adjust anykernel.sh variables inside script to accept any A14-A17 version matching
-        sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
-        
-        zip -r9 ../HyperOS-Vili-Kernel.zip * -x .git* README.md
+          wget https://github.com -O ak3.zip
+          unzip ak3.zip && mv AnyKernel3-master AnyKernel3 && cp out/arch/arm64/boot/Image AnyKernel3/
 
+          
+          cd AnyKernel3
+          sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
+          
+          zip -r9 ../HyperOS-Vili-Kernel.zip * -x .git* README.md
     - name: Upload Flashable Kernel Zip
       uses: actions/upload-artifact@v4
       with:
