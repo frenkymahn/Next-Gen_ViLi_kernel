@@ -28,10 +28,15 @@ jobs:
         sed -i 's/obj-$(CONFIG_MSM_CDSP_PRM) += cdsprm.o/obj-y += /g' drivers/soc/qcom/Makefile
 
         # Fix 3: Inject HyperOS memory structures & mock device name config variables
-        sed -i 's/CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="Next-Gen"/g' arch/arm64/configs/vili_defconfig
+        sed -i 's/CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="-Next-Gen"/g' arch/arm64/configs/vili_defconfig
         echo "CONFIG_ANDROID_BINDER_IPC=y" >> arch/arm64/configs/vili_defconfig
         echo "CONFIG_ANDROID_BINDERFS=y" >> arch/arm64/configs/vili_defconfig
         echo "CONFIG_CGROUPS=y" >> arch/arm64/configs/vili_defconfig
+        
+        # Fix 4: Force link missing Qualcomm CNSS platform base requirements
+        echo "CONFIG_CNSS_QCA6490=y" >> arch/arm64/configs/vili_defconfig
+        echo "CONFIG_CNSS_GENL=y" >> arch/arm64/configs/vili_defconfig
+        echo "CONFIG_CNSS_UTILS=y" >> arch/arm64/configs/vili_defconfig
 
     - name: Compile the Kernel Source
       run: |
