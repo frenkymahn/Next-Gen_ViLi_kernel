@@ -23,11 +23,18 @@ struct cdsprm_npu_limit_cbs {
 };
 
 enum cdsprm_compute_priority {
-	CDSPRM_COMPUTE_HVX_MAX = 1,
-	CDSPRM_COMPUTE_AIX_MAX = 2,
-	CDSPRM_COMPUTE_HVX_OVER_AIX = 3,
-	CDSPRM_COMPUTE_AIX_OVER_HVX = 4,
-	CDSPRM_COMPUTE_BALANCED = 5,
+ CDSPRM_COMPUTE_HVX_MAX = 1,
+ CDSPRM_COMPUTE_AIX_MAX = 2,
+ CDSPRM_COMPUTE_HVX_OVER_AIX = 3,
+ CDSPRM_COMPUTE_AIX_OVER_HVX = 4,
+ CDSPRM_COMPUTE_BALANCED = 5,
+};
+
+enum sysmon_cdsp_feature_compute_prio_idx {
+ SYSMON_CDSP_FEATURE_COMPUTE_PRIO_LOW = 0,
+ SYSMON_CDSP_FEATURE_COMPUTE_PRIO_MEDIUM = 1,
+ SYSMON_CDSP_FEATURE_COMPUTE_PRIO_HIGH = 2,
+ SYSMON_CDSP_FEATURE_COMPUTE_PRIO_MAX
 };
 
 int cdsprm_compute_core_set_priority(enum sysmon_cdsp_feature_compute_prio_idx priority_idx);
