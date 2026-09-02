@@ -19,12 +19,13 @@ jobs:
 
     - name: Patch Drivers for Clang Compatibility
       run: |
-          # Fix 1: Resolves the Wi-Fi driver type conflict error
-          sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
-          
-          # Fix 2: Convert ALL variations of the cdsprm enums to plain integers to stop function mismatches
-          sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx/int/g' drivers/soc/qcom/cdsprm.c include/linux/soc/qcom/cdsprm_cxlimit.h
-          sed -i 's/enum cdsprm_compute_priority/int/g' drivers/soc/qcom/cdsprm.c include/linux/soc/qcom/cdsprm_cxlimit.h
+        # Fix 1: Resolves the Wi-Fi driver type conflict error
+        sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
+
+        # Fix 2: Convert ALL variations of the cdsprm enums to plain integers to stop function mismatches
+        sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx/int/g' drivers/soc/qcom/cdsprm.c include/linux/soc/qcom/cdsprm_cxlimit.h
+        sed -i 's/enum cdsprm_compute_priority/int/g' drivers/soc/qcom/cdsprm.c include/linux/soc/qcom/cdsprm_cxlimit.h
+        sed -i '1s/^/#define CDSPRM_COMPUTE_AIX_OVER_HVX 3\n/' include/linux/soc/qcom/cdsprm_cxlimit.h
 
     - name: Build Kernel
       run: |
