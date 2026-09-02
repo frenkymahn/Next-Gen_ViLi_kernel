@@ -6965,3 +6965,7 @@ CONFIG_USER_NS=y
 #Disable Intentional Verification Check Blocking
 # CONFIG_ can vary depending on exact source code, ensure Android Verified Boot (AVB) changes aren't strictly enforcing matching verification hashes if using non-dynamic partition ports.
 # end of Kernel hacking
+
+# Disable Qualcomm Tracking & Limit Errors
+CONFIG_MSM_CDSP_PRM=n
+CONFIG_QCOM_CX_LIMIT=n
