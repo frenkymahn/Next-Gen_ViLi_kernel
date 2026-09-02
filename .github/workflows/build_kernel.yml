@@ -1,11 +1,11 @@
-name: Build Next-Gen-vili-Kernel
+name: Next-Gen-Vili
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Compiling Kernel
+    name: Next-Gen-Vili
     runs-on: ubuntu-24.04
     
     steps:
@@ -58,11 +58,11 @@ jobs:
         cd AnyKernel3
         sed -i 's/device.name1=/device.name1=vili/g' anykernel.sh
         sed -i 's/os.version=/os.version=14;15;16;17/g' anykernel.sh
-        zip -r9 ../Next-Gen-HyperOS-A14-A17-vili-Kernel.zip *
+        zip -r9 ../Next-Gen-Vili.zip *
 
     - name: Upload Finished Kernel Flashable Zip
       uses: actions/upload-artifact@v4
       with:
-        name: Next-Gen-vili-Kernel
-        path: Next-Gen-vili-Kernel.zip
+        name: Next-Gen-Vili
+        path: Next-Gen-Vili.zip
         
