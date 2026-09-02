@@ -19,10 +19,7 @@ jobs:
 
     - name: Patch Drivers for Clang Compatibility
       run: |
-          # Fix 1: Resolves the Wi-Fi driver type conflict error
           sed -i 's/unsigned char \*data, long unsigned int data_len/unsigned char *data, size_t data_len/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_cfg80211.c
-          
-          # Fix 2: Resolves the CDSP incomplete type error
           sed -i 's/enum sysmon_cdsp_feature_compute_prio_idx priority_idx/int priority_idx/g' drivers/soc/qcom/cdsprm.c
 
     - name: Build Kernel
@@ -31,15 +28,16 @@ jobs:
           export SUBARCH=arm64
           export HEADER_ARCH=arm64
           
+          # Hook directly into your pre-installed system compilers
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
-          export CROSS_COMPILE=aarch64-linux-android-
-          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Configure the kernel config profile
+          # Configure the kernel profile config
           make O=out vili_defconfig
           
-          # Run the actual compilation process with error bypassing
+          # Run compilation process with strict driver error bypassing
           make -j$(nproc --all) O=out KCFLAGS="-Wno-error"
           
     - name: Package with AnyKernel3
