@@ -124,9 +124,11 @@ jobs:
 
     - name: Automatically Assemble AnyKernel3 Flashable Distribution Package
       run: |
-        # Download the official AnyKernel3 clean compilation framework
-        git clone https://github.com --depth=1 $GITHUB_WORKSPACE/anykernel
-        cd $GITHUB_WORKSPACE/anykernel
+        # DYNAMIC FIX: Force clone to use an isolated scratch temporary workspace area
+        # This prevents target directory duplication or intersection faults completely
+        rm -rf $RUNNER_TEMP/anykernel
+        git clone https://github.com --depth=1 $RUNNER_TEMP/anykernel
+        cd $RUNNER_TEMP/anykernel
         
         # Configure installation block properties matching Xiaomi 11T Pro specs
         sed -i 's/kernel.string=.*/kernel.string=Next-Gen Universal HyperOS Kernel for Xiaomi 11T Pro (vili)/' anykernel.sh
@@ -136,22 +138,22 @@ jobs:
         sed -i 's|block=.*|block=/dev/block/bootdevice/by-name/boot;|' anykernel.sh
         sed -i 's/is_slot_device=.*/is_slot_device=auto;/' anykernel.sh
         
-        # CRITICAL REWRITE: Force AnyKernel3 parsing block to unpack flat, uncompressed image binaries
+        # Core configuration for raw, uncompressed 45MB Image files
         sed -i 's/split_boot=.*/split_boot=0;/' anykernel.sh
         
-        # Copy the compiled binary image explicitly to the exact root location of the ZIP tree framework
-        if [ -f ../out/arch/arm64/boot/Image ]; then
-          cp ../out/arch/arm64/boot/Image ./Image
+        # Copy the compiled binary image explicitly to the exact root location of the isolated zip tree framework
+        if [ -f $GITHUB_WORKSPACE/out/arch/arm64/boot/Image ]; then
+          cp $GITHUB_WORKSPACE/out/arch/arm64/boot/Image ./Image
           echo "SUCCESS: Raw Image binary packed into destination root."
-        elif [ -f ../out/arch/arm64/boot/Image.gz-dtb ]; then
-          cp ../out/arch/arm64/boot/Image.gz-dtb ./Image
+        elif [ -f $GITHUB_WORKSPACE/out/arch/arm64/boot/Image.gz-dtb ]; then
+          cp $GITHUB_WORKSPACE/out/arch/arm64/boot/Image.gz-dtb ./Image
           echo "SUCCESS: Renamed compressed image target to flat Image."
         else
           echo "ERROR: Missing compiled Image binary!" && exit 1
         fi
         
         # Compress the staging structures into the final update zip package
-        zip -r9 ../Next-Gen-Vili-HyperOS-Flashable.zip * -x .git README.md
+        zip -r9 $GITHUB_WORKSPACE/Next-Gen-Vili-HyperOS-Flashable.zip * -x .git README.md
 
     - name: Upload Flashable ZIP to GitHub Artifacts
       uses: actions/upload-artifact@v4
