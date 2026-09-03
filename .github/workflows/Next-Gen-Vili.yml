@@ -57,38 +57,44 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # DYNAMIC FIX: Use current working directory to accurately point to embedded compilers
+        # Point to the exact internal directories containing your repo's prebuilt tools
         ROOT_DIR=$(pwd)
         CLANG_DIR="$ROOT_DIR/android/prebuilts/clang/host/linux-x86/clang-r41d"
         GCC64_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
         GCC32_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
         
-        # Export toolchains into system PATH before running compilation parameters
+        # Prepend the toolchain folders directly into the active system PATH execution window
         export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
         
-        # Define internal compilation targets
-        export CC=clang
-        export LD=ld.lld
-        export AR=llvm-ar
-        export NM=llvm-nm
-        export OBJCOPY=llvm-objcopy
-        export OBJDUMP=llvm-objdump
-        export STRIP=llvm-strip
-        
-        export CROSS_COMPILE=aarch64-linux-android-
-        export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+        # FIXED: Gather all tools into a single variable passed directly to all compilation levels
+        MAKE_ARGS="ARCH=arm64 \
+                   SUBARCH=arm64 \
+                   CC=clang \
+                   LD=ld.lld \
+                   AR=llvm-ar \
+                   NM=llvm-nm \
+                   OBJCOPY=llvm-objcopy \
+                   OBJDUMP=llvm-objdump \
+                   STRIP=llvm-strip \
+                   CROSS_COMPILE=aarch64-linux-android- \
+                   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+                   LLVM=1 \
+                   LLVM_IAS=1"
         
         CONF_FILE="vili_defconfig"
         if [ ! -f "arch/arm64/configs/vili_defconfig" ]; then
           CONF_FILE="vendor/vili_defconfig"
         fi
         
-        make O=out clean
-        make O=out mrproper
-        make O=out $CONF_FILE
+        # Clean build output structure safely
+        make O=out $MAKE_ARGS clean
+        make O=out $MAKE_ARGS mrproper
         
-        # Compiles using strict LLVM wrappers bound to Next-Gen local name
-        make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen LLVM=1 LLVM_IAS=1
+        # FIXED: Pass the complete toolchain layer block to the initial configuration command
+        make O=out $MAKE_ARGS $CONF_FILE
+        
+        # Compile using all available host virtual cores cleanly
+        make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen $MAKE_ARGS
 
     - name: Package and Verify Kernel Binary Outputs
       run: |
