@@ -1,4 +1,4 @@
-name: Build Vili HyperOS Universal Kernel
+name: Build Vili HyperOS Next-Gen Kernel
 
 on:
   workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
@@ -13,7 +13,7 @@ jobs:
     - name: Install Compiling Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
+        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
     - name: Force HyperOS 2.0-4.0 & Android 14-17 Defconfig Injections
       run: |
@@ -107,6 +107,6 @@ jobs:
     - name: Upload Universal Image to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Universal-Vili-Kernel-Pack
+        name: Next-Gen-Vili-Kernel-Pack
         path: ./out_artifacts/
         
