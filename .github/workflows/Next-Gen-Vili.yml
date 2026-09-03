@@ -19,8 +19,8 @@ jobs:
       run: |
         mkdir -p clang
         cd clang
-        # Fetches official Google AOSP compiler binaries designed for modern OS cross-compatibility (Android 14-17 / HyperOS 2.0-4.0)
-        wget https://googlesource.com
+        # Using a reliable direct tar archive download link for the r522817 prebuilt environment
+        wget https://googlesource.com -O clang-r522817.tar.gz
         tar -xzf clang-r522817.tar.gz
         echo "$(pwd)/bin" >> $GITHUB_PATH
 
