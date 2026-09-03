@@ -1,11 +1,11 @@
-name: Build Vili HyperOS Next-Gen Kernel
+name: Build Vili HyperOS Universal Kernel
 
 on:
   workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
 
 jobs:
   build:
-    runs-on: ubuntu-24.04 # Modern environment for fast and reliable compilation
+    runs-on: ubuntu-24.04 # Modern environment with pre-installed LLVM/Clang
     steps:
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
@@ -13,16 +13,7 @@ jobs:
     - name: Install Compiling Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld
-
-    - name: Download Verified AOSP Clang Toolchain (r522817 / Clang 18-19)
-      run: |
-        mkdir -p clang
-        cd clang
-        # Pulls a dedicated release mirror bypass to prevent Google Git authentication drops
-        wget https://github.com -O clang.tar.gz
-        tar -xzf clang.tar.gz
-        echo "$(pwd)/bin" >> $GITHUB_PATH
+        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
 
     - name: Force HyperOS 2.0-4.0 & Android 14-17 Defconfig Injections
       run: |
@@ -54,7 +45,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # Explicit full-stack LLVM bindings required to support strict 16KB/64KB Android architectures
+        # Explicitly targets the pre-installed system LLVM compiler suite
         export CC=clang
         export LD=ld.lld
         export AR=llvm-ar
@@ -116,6 +107,6 @@ jobs:
     - name: Upload Universal Image to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Next-Gen-Vili-Kernel-Pack
+        name: Universal-Vili-Kernel-Pack
         path: ./out_artifacts/
         
