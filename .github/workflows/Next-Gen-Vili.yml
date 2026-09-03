@@ -46,7 +46,7 @@ jobs:
         echo "CONFIG_EROFS_FS_POSIX_ACL=y" >> $DEFCONFIG_PATH
         echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=y" >> $DEFCONFIG_PATH
         
-        # Injects the Kernel Name directly into the config profile configuration
+        # Hardcodes the Kernel Name directly into the config profile configuration
         echo 'CONFIG_LOCALVERSION="-Next-Gen"' >> $DEFCONFIG_PATH
 
     - name: Compile HyperOS Universal Kernel
@@ -79,19 +79,36 @@ jobs:
         # Build using all virtual CPU threads with strict LLVM assembly rules and custom name flags
         make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen LLVM=1 LLVM_IAS=1
 
-    - name: Package and Verify Kernel Binary
+    - name: Package and Verify Kernel Binary Outputs
       run: |
-        # Prioritizes Appended DTB Image layers to ensure the hardware tree is compiled directly into the boot sector
+        mkdir -p out_artifacts
+        
+        # 1. Package the core kernel image
         if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
-          cp out/arch/arm64/boot/Image.gz-dtb ./Image
-          echo "Build status: Appended DTB Image.gz generated successfully."
-        elif [ -f out/arch/arm64/boot/Image.gz ]; then
-          cp out/arch/arm64/boot/Image.gz ./Image
-          echo "Build status: Standard Compressed Image.gz generated."
+          cp out/arch/arm64/boot/Image.gz-dtb ./out_artifacts/Image
+          echo "Core Image.gz-dtb captured."
         elif [ -f out/arch/arm64/boot/Image ]; then
-          cp out/arch/arm64/boot/Image ./Image
-          echo "Build status: Raw standard Image compiled successfully."
-        else
+          cp out/arch/arm64/boot/Image ./out_artifacts/Image
+          echo "Core Image captured."
+        fi
+        
+        # 2. Package DTBO Image if compiled by your source
+        if [ -f out/arch/arm64/boot/dtbo.img ]; then
+          cp out/arch/arm64/boot/dtbo.img ./out_artifacts/dtbo.img
+          echo "DTBO Image captured."
+        elif [ -f out/arch/boot/dtbo.img ]; then
+          cp out/arch/boot/dtbo.img ./out_artifacts/dtbo.img
+          echo "DTBO Image captured from backup path."
+        fi
+
+        # 3. Package Vendor Boot Image if compiled by your source
+        if [ -f out/arch/arm64/boot/vendor_boot.img ]; then
+          cp out/arch/arm64/boot/vendor_boot.img ./out_artifacts/vendor_boot.img
+          echo "Vendor Boot Image captured."
+        fi
+
+        # Final verification step
+        if [ ! -f ./out_artifacts/Image ]; then
           echo "CRITICAL FAULT: Kernel compilation output path is missing!"
           exit 1
         fi
@@ -99,6 +116,6 @@ jobs:
     - name: Upload Universal Image to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Next-Gen-Vili-Kernel
-        path: ./Image
+        name: Next-Gen-Vili-Kernel-Pack
+        path: ./out_artifacts/
         
