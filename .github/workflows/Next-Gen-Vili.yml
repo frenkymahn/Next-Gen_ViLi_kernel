@@ -35,7 +35,6 @@ jobs:
         if [ -f "$BUS_C_PATH" ]; then
           echo "Injecting weak linker stub definitions into bus.c to eliminate undefined/duplicate conflicts..."
           
-          # FIXED: Added __attribute__((weak)) to symbols to handle linker compilation gracefully
           echo "#ifndef _BUS_STUBS_H" > bus_stubs.h
           echo "#define _BUS_STUBS_H" >> bus_stubs.h
           echo "#include <linux/types.h>" >> bus_stubs.h
@@ -47,7 +46,6 @@ jobs:
           echo "__attribute__((weak)) void cnss_request_pm_qos(struct device *dev, u32 qos_val) { return; }" >> bus_stubs.h
           echo "#endif" >> bus_stubs.h
           
-          # Inject the stubs header include statement directly at line 1 of the target file
           sed -i '1s/^/#include "bus_stubs.h"\n/' "$BUS_C_PATH"
           mv bus_stubs.h drivers/net/wireless/cnss2/
         else
@@ -124,43 +122,40 @@ jobs:
         # Compile using all available host virtual cores cleanly
         make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen $MAKE_ARGS
 
-    - name: Package and Verify Kernel Binary Outputs
+    - name: Automatically Assemble AnyKernel3 Flashable Distribution Package
       run: |
-        mkdir -p out_artifacts
+        # Download the official AnyKernel3 clean compilation framework
+        git clone https://github.com --depth=1 $GITHUB_WORKSPACE/anykernel
+        cd $GITHUB_WORKSPACE/anykernel
         
-        # 1. Package the core kernel image
-        if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
-          cp out/arch/arm64/boot/Image.gz-dtb ./out_artifacts/Image
-          echo "Core Image.gz-dtb captured."
-        elif [ -f out/arch/arm64/boot/Image ]; then
-          cp out/arch/arm64/boot/Image ./out_artifacts/Image
-          echo "Core Image captured."
+        # Configure installation block properties matching Xiaomi 11T Pro specs
+        sed -i 's/kernel.string=.*/kernel.string=Next-Gen Universal HyperOS Kernel for Xiaomi 11T Pro (vili)/' anykernel.sh
+        sed -i 's/device.name1=.*/device.name1=vili/' anykernel.sh
+        
+        # Exact absolute partition path routing configuration required for Virtual A/B storage
+        sed -i 's|block=.*|block=/dev/block/bootdevice/by-name/boot;|' anykernel.sh
+        sed -i 's/is_slot_device=.*/is_slot_device=auto;/' anykernel.sh
+        
+        # CRITICAL REWRITE: Force AnyKernel3 parsing block to unpack flat, uncompressed image binaries
+        sed -i 's/split_boot=.*/split_boot=0;/' anykernel.sh
+        
+        # Copy the compiled binary image explicitly to the exact root location of the ZIP tree framework
+        if [ -f ../out/arch/arm64/boot/Image ]; then
+          cp ../out/arch/arm64/boot/Image ./Image
+          echo "SUCCESS: Raw Image binary packed into destination root."
+        elif [ -f ../out/arch/arm64/boot/Image.gz-dtb ]; then
+          cp ../out/arch/arm64/boot/Image.gz-dtb ./Image
+          echo "SUCCESS: Renamed compressed image target to flat Image."
+        else
+          echo "ERROR: Missing compiled Image binary!" && exit 1
         fi
         
-        # 2. Package DTBO Image if compiled by your source
-        if [ -f out/arch/arm64/boot/dtbo.img ]; then
-          cp out/arch/arm64/boot/dtbo.img ./out_artifacts/dtbo.img
-          echo "DTBO Image captured."
-        elif [ -f out/arch/boot/dtbo.img ]; then
-          cp out/arch/boot/dtbo.img ./out_artifacts/dtbo.img
-          echo "DTBO Image captured from backup path."
-        fi
+        # Compress the staging structures into the final update zip package
+        zip -r9 ../Next-Gen-Vili-HyperOS-Flashable.zip * -x .git README.md
 
-        # 3. Package Vendor Boot Image if compiled by your source
-        if [ -f out/arch/arm64/boot/vendor_boot.img ]; then
-          cp out/arch/arm64/boot/vendor_boot.img ./out_artifacts/vendor_boot.img
-          echo "Vendor Boot Image captured."
-        fi
-
-        # Final verification step
-        if [ ! -f ./out_artifacts/Image ]; then
-          echo "CRITICAL FAULT: Kernel compilation output path is missing!"
-          exit 1
-        fi
-
-    - name: Upload Universal Image to GitHub Artifacts
+    - name: Upload Flashable ZIP to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Next-Gen-Vili-Kernel-Pack
-        path: ./out_artifacts/
+        name: Next-Gen-Vili-HyperOS-Flashable-Zip
+        path: ./Next-Gen-Vili-HyperOS-Flashable.zip
         
