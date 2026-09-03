@@ -15,23 +15,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
         
-        # Ubuntu 24.04 compatibility layers for legacy cross-compiler support
+        # Ubuntu 24.04 environment tracking layers for embedded cross-compilers
         sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
         sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
-
-    - name: Download Official AOSP GCC Cross-Compilers
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/toolchains
-        cd $GITHUB_WORKSPACE/toolchains
-        
-        # FIXED: Using direct git clone mirrors to avoid any curl/tar archive formatting issues entirely
-        echo "Cloning 64-bit GCC Toolchain..."
-        git clone https://github.com -b google --depth=1 gcc64
-        echo "$GITHUB_WORKSPACE/toolchains/gcc64/bin" >> $GITHUB_PATH
-        
-        echo "Cloning 32-bit GCC Toolchain..."
-        git clone https://github.com --depth=1 gcc32
-        echo "$GITHUB_WORKSPACE/toolchains/gcc32/bin" >> $GITHUB_PATH
 
     - name: Automatically Fix Touchscreen Makefile Syntax Error
       run: |
@@ -71,7 +57,14 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # Define internal targets to bind custom compilers
+        # Mapped directly to your repository's embedded prebuilt engine pathing structures
+        CLANG_DIR="$GITHUB_WORKSPACE/android/prebuilts/clang/host/linux-x86/clang-r41d"
+        GCC64_DIR="$GITHUB_WORKSPACE/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
+        GCC32_DIR="$GITHUB_WORKSPACE/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
+        
+        export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
+        
+        # Define internal targets using the prebuilt embedded tooling parameters
         export CC=clang
         export LD=ld.lld
         export AR=llvm-ar
@@ -80,7 +73,6 @@ jobs:
         export OBJDUMP=llvm-objdump
         export STRIP=llvm-strip
         
-        # Mapped to the newly pulled cross-compiler directories
         export CROSS_COMPILE=aarch64-linux-android-
         export CROSS_COMPILE_ARM32=arm-linux-androideabi-
         
