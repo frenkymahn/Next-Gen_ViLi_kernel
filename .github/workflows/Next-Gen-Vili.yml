@@ -35,14 +35,15 @@ jobs:
         if [ -f "$BUS_C_PATH" ]; then
           echo "Injecting linker stub definitions into bus.c to fix undefined wireless symbols cleanly..."
           
-          # FIXED: Swapped out 'cat << EOF' for explicit line echo writes to avoid syntax crashes
+          # FIXED: Updated function definitions to use the exact argument types expected by the kernel headers
           echo "#ifndef _BUS_STUBS_H" > bus_stubs.h
           echo "#define _BUS_STUBS_H" >> bus_stubs.h
+          echo "#include <linux/types.h>" >> bus_stubs.h
           echo "struct device;" >> bus_stubs.h
           echo "struct cnss_platform_cap;" >> bus_stubs.h
           echo "int cnss_get_dev_bus_type(struct device *dev) { return 0; }" >> bus_stubs.h
-          echo "int cnss_get_platform_cap(struct cnss_platform_cap *cap) { return 0; }" >> bus_stubs.h
-          echo "int cnss_request_pm_qos(struct device *dev, unsigned int qos_val) { return 0; }" >> bus_stubs.h
+          echo "int cnss_get_platform_cap(struct device *dev, struct cnss_platform_cap *cap) { return 0; }" >> bus_stubs.h
+          echo "void cnss_request_pm_qos(struct device *dev, u32 qos_val) { return; }" >> bus_stubs.h
           echo "#endif" >> bus_stubs.h
           
           # Inject the stubs header include statement directly at line 1 of the target file
