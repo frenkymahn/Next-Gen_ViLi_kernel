@@ -15,27 +15,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
         
-        # Ubuntu 24.04 compatibility tracking layers for legacy cross-compiler support
+        # Ubuntu 24.04 compatibility layers for legacy cross-compiler support
         sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
         sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
 
     - name: Download Official AOSP GCC Cross-Compilers
       run: |
-        mkdir -p $GITHUB_WORKSPACE/toolchains/gcc64
-        mkdir -p $GITHUB_WORKSPACE/toolchains/gcc32
-        
+        mkdir -p $GITHUB_WORKSPACE/toolchains
         cd $GITHUB_WORKSPACE/toolchains
         
-        # FIXED: Complete full path URL for Android 64-bit GCC Toolchain Archive
-        curl -L "https://googlesource.com" -o gcc64.tar.gz
-        tar -xzf gcc64.tar.gz -C gcc64
-        rm gcc64.tar.gz
+        # FIXED: Using direct git clone mirrors to avoid any curl/tar archive formatting issues entirely
+        echo "Cloning 64-bit GCC Toolchain..."
+        git clone https://github.com -b google --depth=1 gcc64
         echo "$GITHUB_WORKSPACE/toolchains/gcc64/bin" >> $GITHUB_PATH
         
-        # FIXED: Complete full path URL for Android 32-bit GCC Toolchain Archive
-        curl -L "https://googlesource.com" -o gcc32.tar.gz
-        tar -xzf gcc32.tar.gz -C gcc32
-        rm gcc32.tar.gz
+        echo "Cloning 32-bit GCC Toolchain..."
+        git clone https://github.com --depth=1 gcc32
         echo "$GITHUB_WORKSPACE/toolchains/gcc32/bin" >> $GITHUB_PATH
 
     - name: Automatically Fix Touchscreen Makefile Syntax Error
@@ -43,7 +38,6 @@ jobs:
         MAKEFILE_PATH="drivers/input/touchscreen/focaltech_3680/Makefile"
         if [ -f "$MAKEFILE_PATH" ]; then
           echo "Fixing missing separator syntax error in focaltech Makefile..."
-          # Replaces spaces on broken layout lines with a clean compilation tab character
           sed -i 's/^[[:space:]]\+/	/' "$MAKEFILE_PATH"
         else
           echo "Focaltech Makefile path not found, skipping patch."
@@ -86,7 +80,7 @@ jobs:
         export OBJDUMP=llvm-objdump
         export STRIP=llvm-strip
         
-        # Mapped to the newly pulled AOSP cross-compiler directories
+        # Mapped to the newly pulled cross-compiler directories
         export CROSS_COMPILE=aarch64-linux-android-
         export CROSS_COMPILE_ARM32=arm-linux-androideabi-
         
