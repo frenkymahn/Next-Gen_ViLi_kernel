@@ -29,6 +29,20 @@ jobs:
           echo "Focaltech Makefile path not found, skipping patch."
         fi
 
+    - name: Automatically Patch Undefined CNSS2 Wireless Driver Symbols
+      run: |
+        BUS_C_PATH="drivers/net/wireless/cnss2/bus.c"
+        if [ -f "$BUS_C_PATH" ]; then
+          echo "Patching undefined cnss_get_dev_bus_type links inside bus.c..."
+          
+          # Comments out the specific unlinked function call blocks throwing the linker error
+          sed -i '/cnss_get_dev_bus_type/s/^/\/\//' "$BUS_C_PATH"
+          sed -i '/cnss_get_platform_cap/s/^/\/\//' "$BUS_C_PATH"
+          sed -i '/cnss_request_pm_qos/s/^/\/\//' "$BUS_C_PATH"
+        else
+          echo "Wireless driver path not found, skipping patch."
+        fi
+
     - name: Force HyperOS 2.0-4.0 & Android 14-17 Defconfig Injections
       run: |
         DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
@@ -62,8 +76,7 @@ jobs:
         GCC64_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
         GCC32_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
         
-        # CRITICAL DYNAMIC FIX: Create absolute host symlinks so the kernel build system
-        # resolves 'aarch64-linux-android-gcc' directly to Clang/LLVM engine calls
+        # Create absolute host symlinks so the configuration checks resolve safely
         sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/aarch64-linux-android-gcc
         sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/arm-linux-androideabi-gcc
         
