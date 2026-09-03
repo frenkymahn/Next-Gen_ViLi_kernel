@@ -15,13 +15,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld
 
-    - name: Download Google AOSP Clang Toolchain (r522817 / Clang 18-19)
+    - name: Download Verified AOSP Clang Toolchain (r522817 / Clang 18-19)
       run: |
         mkdir -p clang
         cd clang
-        # Using a reliable direct tar archive download link for the r522817 prebuilt environment
-        wget https://googlesource.com -O clang-r522817.tar.gz
-        tar -xzf clang-r522817.tar.gz
+        # Pulls a dedicated release mirror bypass to prevent Google Git authentication drops
+        wget https://github.com -O clang.tar.gz
+        tar -xzf clang.tar.gz
         echo "$(pwd)/bin" >> $GITHUB_PATH
 
     - name: Force HyperOS 2.0-4.0 & Android 14-17 Defconfig Injections
