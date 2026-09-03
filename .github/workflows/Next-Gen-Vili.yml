@@ -57,16 +57,20 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # Point to the exact internal directories containing your repo's prebuilt tools
         ROOT_DIR=$(pwd)
         CLANG_DIR="$ROOT_DIR/android/prebuilts/clang/host/linux-x86/clang-r41d"
         GCC64_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
         GCC32_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
         
-        # Prepend the toolchain folders directly into the active system PATH execution window
+        # CRITICAL DYNAMIC FIX: Create absolute host symlinks so the kernel build system
+        # resolves 'aarch64-linux-android-gcc' directly to Clang/LLVM engine calls
+        sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/aarch64-linux-android-gcc
+        sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/arm-linux-androideabi-gcc
+        
+        # Prepend all embedded toolchain folders explicitly into the system PATH
         export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
         
-        # FIXED: Gather all tools into a single variable passed directly to all compilation levels
+        # Consolidate build arguments cleanly
         MAKE_ARGS="ARCH=arm64 \
                    SUBARCH=arm64 \
                    CC=clang \
@@ -90,7 +94,7 @@ jobs:
         make O=out $MAKE_ARGS clean
         make O=out $MAKE_ARGS mrproper
         
-        # FIXED: Pass the complete toolchain layer block to the initial configuration command
+        # Initialize configuration file using our symlinked variables
         make O=out $MAKE_ARGS $CONF_FILE
         
         # Compile using all available host virtual cores cleanly
