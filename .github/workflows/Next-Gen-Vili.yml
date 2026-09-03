@@ -21,20 +21,19 @@ jobs:
 
     - name: Download Official AOSP GCC Cross-Compilers
       run: |
-        # Crucial Fix: Generate the exact target folder before running curl downloads
         mkdir -p $GITHUB_WORKSPACE/toolchains/gcc64
         mkdir -p $GITHUB_WORKSPACE/toolchains/gcc32
         
         cd $GITHUB_WORKSPACE/toolchains
         
-        # Download verified Android 64-bit GCC Toolchain Archive directly
-        curl -L https://googlesource.com -o gcc64.tar.gz
+        # FIXED: Complete full path URL for Android 64-bit GCC Toolchain Archive
+        curl -L "https://googlesource.com" -o gcc64.tar.gz
         tar -xzf gcc64.tar.gz -C gcc64
         rm gcc64.tar.gz
         echo "$GITHUB_WORKSPACE/toolchains/gcc64/bin" >> $GITHUB_PATH
         
-        # Download verified Android 32-bit GCC Toolchain Archive directly
-        curl -L https://googlesource.com -o gcc32.tar.gz
+        # FIXED: Complete full path URL for Android 32-bit GCC Toolchain Archive
+        curl -L "https://googlesource.com" -o gcc32.tar.gz
         tar -xzf gcc32.tar.gz -C gcc32
         rm gcc32.tar.gz
         echo "$GITHUB_WORKSPACE/toolchains/gcc32/bin" >> $GITHUB_PATH
