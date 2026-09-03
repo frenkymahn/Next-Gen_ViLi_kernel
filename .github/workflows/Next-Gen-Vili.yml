@@ -62,6 +62,7 @@ jobs:
         GCC64_DIR="$GITHUB_WORKSPACE/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
         GCC32_DIR="$GITHUB_WORKSPACE/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
         
+        # Update the system path to make the compilers visible to the makefile scripts
         export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
         
         # Define internal targets using the prebuilt embedded tooling parameters
@@ -73,8 +74,9 @@ jobs:
         export OBJDUMP=llvm-objdump
         export STRIP=llvm-strip
         
-        export CROSS_COMPILE=aarch64-linux-android-
-        export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+        # FIXED: Directly bind the exact binary directory path string to cross-compile arguments
+        export CROSS_COMPILE="$GCC64_DIR/bin/aarch64-linux-android-"
+        export CROSS_COMPILE_ARM32="$GCC32_DIR/bin/arm-linux-androideabi-"
         
         CONF_FILE="vili_defconfig"
         if [ ! -f "arch/arm64/configs/vili_defconfig" ]; then
