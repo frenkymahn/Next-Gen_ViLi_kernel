@@ -124,11 +124,17 @@ jobs:
 
     - name: Automatically Assemble AnyKernel3 Flashable Distribution Package
       run: |
-        # DYNAMIC FIX: Force clone to use an isolated scratch temporary workspace area
-        # This prevents target directory duplication or intersection faults completely
+        # Clean workspace target directory
         rm -rf $RUNNER_TEMP/anykernel
-        git clone https://github.com --depth=1 $RUNNER_TEMP/anykernel
+        mkdir -p $RUNNER_TEMP/anykernel
         cd $RUNNER_TEMP/anykernel
+        
+        # FIXED: Download AnyKernel3 zip master package directly using curl instead of git clone 
+        # This completely avoids the submodule git configuration conflict error
+        curl -L https://github.com/osm0sis/AnyKernel3/archive/refs/heads/master.zip -o AK3.zip
+        unzip AK3.zip
+        mv AnyKernel3-master/* .
+        rm -rf AK3.zip AnyKernel3-master
         
         # Configure installation block properties matching Xiaomi 11T Pro specs
         sed -i 's/kernel.string=.*/kernel.string=Next-Gen Universal HyperOS Kernel for Xiaomi 11T Pro (vili)/' anykernel.sh
@@ -153,7 +159,7 @@ jobs:
         fi
         
         # Compress the staging structures into the final update zip package
-        zip -r9 $GITHUB_WORKSPACE/Next-Gen-Vili-HyperOS-Flashable.zip * -x .git README.md
+        zip -r9 $GITHUB_WORKSPACE/Next-Gen-Vili-HyperOS-Flashable.zip * -x README.md
 
     - name: Upload Flashable ZIP to GitHub Artifacts
       uses: actions/upload-artifact@v4
