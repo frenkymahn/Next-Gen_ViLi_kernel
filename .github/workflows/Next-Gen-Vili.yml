@@ -1,26 +1,48 @@
-name: Build Vili HyperOS Next-Gen Kernel
+name: Build Vili HyperOS Universal Kernel
 
 on:
   workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
 
 jobs:
   build:
-    runs-on: ubuntu-24.04 # Modern environment with pre-installed LLVM/Clang
+    runs-on: ubuntu-24.04 # Modern fast build runner environment
     steps:
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
 
-    - name: Install Compiling Dependencies
+    - name: Install System Compiling Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
+
+    - name: Download Official AOSP GCC Cross-Compilers
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/toolchains
+        cd $GITHUB_WORKSPACE/toolchains
+        
+        # Download verified Android 64-bit GCC Toolchain
+        git clone https://googlesource.com -b master --depth=1 gcc64
+        echo "$GITHUB_WORKSPACE/toolchains/gcc64/bin" >> $GITHUB_PATH
+        
+        # Download verified Android 32-bit GCC Toolchain
+        git clone https://googlesource.com -b master --depth=1 gcc32
+        echo "$GITHUB_WORKSPACE/toolchains/gcc32/bin" >> $GITHUB_PATH
+
+    - name: Automatically Fix Touchscreen Makefile Syntax Error
+      run: |
+        MAKEFILE_PATH="drivers/input/touchscreen/focaltech_3680/Makefile"
+        if [ -f "$MAKEFILE_PATH" ]; then
+          echo "Fixing missing separator syntax error in focaltech Makefile..."
+          # Replaces spaces on broken layout lines with a clean compilation tab character
+          sed -i 's/^[[:space:]]\+/	/' "$MAKEFILE_PATH"
+        else
+          echo "Focaltech Makefile path not found, skipping patch."
+        fi
 
     - name: Force HyperOS 2.0-4.0 & Android 14-17 Defconfig Injections
       run: |
-        # Automatically ensures mandatory system compatibility flags are injected before compiling
         DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
         if [ ! -f "$DEFCONFIG_PATH" ]; then
-          # Fallback check if the file is housed inside a vendor directory
           DEFCONFIG_PATH="arch/arm64/configs/vendor/vili_defconfig"
         fi
         
@@ -45,7 +67,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # Explicitly targets the pre-installed system LLVM compiler suite
+        # Define internal targets to bind custom compilers
         export CC=clang
         export LD=ld.lld
         export AR=llvm-ar
@@ -54,10 +76,10 @@ jobs:
         export OBJDUMP=llvm-objdump
         export STRIP=llvm-strip
         
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+        # Mapped to the newly pulled AOSP cross-compiler directories
+        export CROSS_COMPILE=aarch64-linux-android-
+        export CROSS_COMPILE_ARM32=arm-linux-androideabi-
         
-        # Select active defconfig file name base
         CONF_FILE="vili_defconfig"
         if [ ! -f "arch/arm64/configs/vili_defconfig" ]; then
           CONF_FILE="vendor/vili_defconfig"
@@ -67,7 +89,7 @@ jobs:
         make O=out mrproper
         make O=out $CONF_FILE
         
-        # Build using all virtual CPU threads with strict LLVM assembly rules and custom name flags
+        # Compiles using strict LLVM wrappers
         make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen LLVM=1 LLVM_IAS=1
 
     - name: Package and Verify Kernel Binary Outputs
@@ -107,6 +129,6 @@ jobs:
     - name: Upload Universal Image to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Next-Gen-Vili-Kernel-Pack
+        name: Universal-Vili-Kernel-Pack
         path: ./out_artifacts/
         
