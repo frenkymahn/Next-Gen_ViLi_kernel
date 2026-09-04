@@ -21,13 +21,17 @@ jobs:
 
       - name: Pull Target Source Components
         run: |
-          # Official MiCode kernel source repository
+          # Fetch the official MiCode source tree repository (FIXED)
           git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
           
-          # Clang toolchain repository
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r416183b clang
+          # FIXED: Download public AOSP Clang toolchain instead of private proton-clang
+          mkdir clang
+          cd clang
+          wget https://googlesource.com
+          tar -xf clang-r530567.tar.gz
+          cd ..
           
-          # AnyKernel3 flashing framework repository
+          # Fetch flashing framework structures
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
 
       - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
