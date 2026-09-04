@@ -81,8 +81,10 @@ jobs:
             sed -i 's/asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM));/\/* asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM)); *\//g' arch/arm64/include/asm/kgdb.h || true
           fi
 
-          # 3. Completely wipe and delete the VDSO directory to prevent any modern Clang compilation errors
-          rm -rf arch/arm64/kernel/vdso || true
+          # 3. Properly disable VDSO in arch/arm64/Makefile
+          if [ -f arch/arm64/Makefile ]; then
+            sed -i '/vdso/d' arch/arm64/Makefile || true
+          fi
           
           echo "-> All source code patches successfully applied!"
 
