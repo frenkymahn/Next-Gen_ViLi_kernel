@@ -54,8 +54,6 @@ jobs:
           echo "# Strip verification and dm-verity traps causing hardware hangup loops" >> vili_defconfig
           echo "CONFIG_DM_VERITY=n" >> vili_defconfig
           echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
-          
-          # FIXED: Completely disable VDSO configuration flag cleanly from defconfig
           echo "CONFIG_VDSO=n" >> vili_defconfig
 
       - name: Patch Source Code for Modern Clang 5.10 Compatibility
@@ -82,6 +80,12 @@ jobs:
           # 2. Bypass KGDB constraint error by commenting out the offending inline assembly line
           if [ -f arch/arm64/include/asm/kgdb.h ]; then
             sed -i 's/asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM));/\/* asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM)); *\//g' arch/arm64/include/asm/kgdb.h || true
+          fi
+
+          # 3. Empty out VDSO files to bypass modern clang assembler errors completely
+          if [ -d arch/arm64/kernel/vdso ]; then
+            rm -f arch/arm64/kernel/vdso/*.S arch/arm64/kernel/vdso/*.c arch/arm64/kernel/vdso/*.lds
+            touch arch/arm64/kernel/vdso/vdso.S
           fi
           
           echo "-> All source code patches successfully applied!"
