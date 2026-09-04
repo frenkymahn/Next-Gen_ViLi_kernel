@@ -12,7 +12,7 @@ jobs:
       - name: System Dependencies Setup (Ubuntu 24.04 Cleaned)
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev binutils-aarch64-linux-gnu
+          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev binutils-aarch64-linux-gnu wget tar
           
           sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
           sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
@@ -21,9 +21,12 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
           
+          # FIXED: Download and completely extract the standalone Android 12 Clang compiler package toolchain
           mkdir -p clang
           cd clang
-          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz || curl -LO https://gitlab.com/ThankYouMario/android_prebuilts_clang_host_linux-x86_clang-r416183b/-/raw/main/clang-r416183b.tar.gz
+          wget -q https://gitlab.com/ThankYouMario/android_prebuilts_clang_host_linux-x86_clang-r416183b/-/raw/main/clang-r416183b.tar.gz
+          tar -xf clang-r416183b.tar.gz
+          rm -f clang-r416183b.tar.gz
           cd ..
           
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
@@ -39,7 +42,10 @@ jobs:
           echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
           echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
           
-          echo "# Re-route eBPF sub-systems to feed correct security packets to modern ports" >> vili_defconfig
+          # FIXED: Force native bypass configuration markers to completely shut down the broken vDSO compilation block
+          echo "CONFIG_VDSO=n" >> vili_defconfig
+          echo "CONFIG_COMPAT_VDSO=n" >> vili_defconfig
+          
           echo "CONFIG_BPF=y" >> vili_defconfig
           echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
           echo "CONFIG_BPF_JIT=y" >> vili_defconfig
@@ -47,20 +53,17 @@ jobs:
           echo "CONFIG_NET_CLS_ACT=y" >> vili_defconfig
           echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
           
-          echo "# Bypass SELinux layout block crashes on modified ports" >> vili_defconfig
           echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
           echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> vili_defconfig
           
-          echo "# Strip verification and dm-verity traps causing hardware hangup loops" >> vili_defconfig
           echo "CONFIG_DM_VERITY=n" >> vili_defconfig
           echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
-          echo "CONFIG_VDSO=n" >> vili_defconfig
 
       - name: Patch Source Code for Modern Clang 5.10 Compatibility
         run: |
           cd kernel-source
           
-          # 1. Rewrite stack_pointer.h to bypass Clang sp-register restriction completely
+          # Rewrite stack_pointer.h to bypass Clang sp-register restriction completely
           cat << 'EOF' > arch/arm64/include/asm/stack_pointer.h
           #ifndef __ASM_STACK_POINTER_H
           #define __ASM_STACK_POINTER_H
@@ -77,15 +80,9 @@ jobs:
           #endif
           EOF
 
-          # 2. Bypass KGDB constraint error by commenting out the offending inline assembly line
+          # Bypass KGDB constraint error by commenting out the offending inline assembly line
           if [ -f arch/arm64/include/asm/kgdb.h ]; then
             sed -i 's/asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM));/\/* asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM)); *\//g' arch/arm64/include/asm/kgdb.h || true
-          fi
-
-          # 3. Empty out VDSO files to bypass modern clang assembler errors completely
-          if [ -d arch/arm64/kernel/vdso ]; then
-            rm -f arch/arm64/kernel/vdso/*.S arch/arm64/kernel/vdso/*.c arch/arm64/kernel/vdso/*.lds
-            touch arch/arm64/kernel/vdso/vdso.S
           fi
           
           echo "-> All source code patches successfully applied!"
@@ -153,7 +150,7 @@ jobs:
           
           rm -rf out
           
-          make -j$(nproc --all) O=out vili_defconfig
+          make O=out vili_defconfig
           
           make -j$(nproc --all) O=out \
             CC=clang \
@@ -163,7 +160,8 @@ jobs:
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument -Wno-error=section"
           
           make -j$(nproc --all) O=out \
@@ -174,7 +172,8 @@ jobs:
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument -Wno-error=section" \
             modules
             
