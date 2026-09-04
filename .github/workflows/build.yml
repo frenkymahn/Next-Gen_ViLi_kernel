@@ -14,195 +14,94 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev binutils-aarch64-linux-gnu wget tar
           
+          # UBUNTU 24.04 HOTFIX: Map legacy terminal linker layers
           sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
           sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
 
       - name: Pull Target Source Components
         run: |
-          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
+          # FIXED: Use explicit branch flag '-b vili-r-oss' to bypass 'main' checkout failure
+          git clone --depth=1 https://github.com -b vili-r-oss kernel-source
           
-          # FIXED: Download and completely extract the standalone Android 12 Clang compiler package toolchain
+          # FIXED: Download and extract toolchain in a single workspace layer
           mkdir -p clang
           cd clang
-          wget -q https://gitlab.com/ThankYouMario/android_prebuilts_clang_host_linux-x86_clang-r416183b/-/raw/main/clang-r416183b.tar.gz
-          tar -xf clang-r416183b.tar.gz
-          rm -f clang-r416183b.tar.gz
+          wget -q https://gitlab.com
+          tar -xf clang-r416183b.tar.gz && rm -f clang-r416183b.tar.gz
           cd ..
           
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+          git clone --depth=1 https://github.com AnyKernel3
 
-      - name: Inject Defconfig Custom Tuning (Universal Multi-ROM Bypass)
+      - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze & vDSO Error)
         run: |
           cd kernel-source/arch/arm64/configs/
           
-          echo "" >> vili_defconfig
-          echo "# ========================================================" >> vili_defconfig
-          echo "# UNIVERSAL MULTI-ROM LOGO FREEZE AND ANTI-ROLLBACK BYPASS" >> vili_defconfig
-          echo "# ========================================================" >> vili_defconfig
+          # Appending critical HyperOS compatibility and bootloop fixes
           echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
           echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
           
-          # FIXED: Force native bypass configuration markers to completely shut down the broken vDSO compilation block
+          # FIXED: Disable broken vDSO block causing 'x24 register' error
           echo "CONFIG_VDSO=n" >> vili_defconfig
           echo "CONFIG_COMPAT_VDSO=n" >> vili_defconfig
           
+          # Pass Android 16/17 network security requirements
           echo "CONFIG_BPF=y" >> vili_defconfig
           echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
-          echo "CONFIG_BPF_JIT=y" >> vili_defconfig
           echo "CONFIG_CGROUP_BPF=y" >> vili_defconfig
-          echo "CONFIG_NET_CLS_ACT=y" >> vili_defconfig
           echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
           
+          # Allow permissive boot for ported ROMs
           echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
-          echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> vili_defconfig
-          
           echo "CONFIG_DM_VERITY=n" >> vili_defconfig
-          echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
 
-      - name: Patch Source Code for Modern Clang 5.10 Compatibility
+      - name: Patch Stack Pointer for Clang Compatibility
         run: |
-          cd kernel-source
-          
-          # Rewrite stack_pointer.h to bypass Clang sp-register restriction completely
-          cat << 'EOF' > arch/arm64/include/asm/stack_pointer.h
+          cd kernel-source/arch/arm64/include/asm
+          # Rewrites stack_pointer.h to fix the 'sp' unsuitable register error
+          cat << 'EOF' > stack_pointer.h
           #ifndef __ASM_STACK_POINTER_H
           #define __ASM_STACK_POINTER_H
-
-          static inline unsigned long __current_stack_pointer(void)
-          {
+          static inline unsigned long __current_stack_pointer(void) {
               unsigned long sp;
               __asm__ ("mov %0, sp" : "=r" (sp));
               return sp;
           }
-
           #define current_stack_pointer (__current_stack_pointer())
-
           #endif
-          EOF
-
-          # Bypass KGDB constraint error by commenting out the offending inline assembly line
-          if [ -f arch/arm64/include/asm/kgdb.h ]; then
-            sed -i 's/asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM));/\/* asm ("brk %0" : : "I" (KGDB_COMPILED_DBG_BRK_IMM)); *\//g' arch/arm64/include/asm/kgdb.h || true
-          fi
-          
-          echo "-> All source code patches successfully applied!"
-
-      - name: Overwrite and Inject Custom anykernel.sh Script
-        run: |
-          cat << 'EOF' > AnyKernel3/anykernel.sh
-          properties() { '
-          kernel.string=Next-Gen HyperOS/AOSP Master Kernel - Xiaomi 11T Pro (vili)
-          do.devicecheck=1
-          do.modules=0
-          do.systemless=1
-          do.cleanup=1
-          do.cleanuponabort=1
-          device.name1=vili
-          device.name2=vili_in
-          device.name3=vili_cn
-          device.name4=vili_eu
-          supported.versions=14,14.0,15,15.0,16,16.0,17,17.0
-          '; }
-
-          BLOCK=boot;
-          IS_SLOT_DEVICE=auto;
-          RAMDISK_COMPRESSION=auto;
-          PATCH_VBMETA_FLAG=auto;
-
-          . tools/ak3-core.sh;
-
-          boot_attributes() {
-          set_perm_recursive 0 0 755 644 $RAMDISK/*;
-          set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
-          }
-
-          ui_print "-> Committing custom kernel Image to boot partition...";
-          dump_boot;
-          write_boot;
-
-          if [ -f dtbo.img ]; then
-            ui_print "-> Committing updated hardware trees to dtbo partition...";
-            BLOCK=dtbo;
-            IS_SLOT_DEVICE=auto;
-            flash_dtbo;
-          fi
-
-          if [ -f vendor_boot.img ] || [ -f dtb ]; then
-            ui_print "-> Bypassing security checks & patching vendor_boot container...";
-            BLOCK=vendor_boot;
-            IS_SLOT_DEVICE=auto;
-            RAMDISK_COMPRESSION=auto;
-            PATCH_VBMETA_FLAG=auto;
-            reset_ak;
-            split_boot;
-            flash_boot;
-          fi
           EOF
 
       - name: Execute Main Source Build Process
         run: |
           cd kernel-source
-          
-          export TOOLCHAIN_BIN="$(pwd)/../clang/bin"
-          export PATH="$TOOLCHAIN_BIN:$PATH"
+          export PATH="$(pwd)/../clang/bin:$PATH"
           export ARCH=arm64
           export SUBARCH=arm64
           
-          rm -rf out
-          
+          # Initialize the build using the 'out' directory
           make O=out vili_defconfig
           
+          # Suppress warning-errors to ensure completion
           make -j$(nproc --all) O=out \
             CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument -Wno-error=section"
-          
-          make -j$(nproc --all) O=out \
-            CC=clang \
             LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument -Wno-error=section" \
-            modules
-            
-          make -j$(nproc --all) O=out \
-            INSTALL_MOD_PATH=../modules_out \
-            modules_install
-
-      - name: Stage Asset Package Directories
-        run: |
-          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
-          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
+            KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument"
           
-          if [ -f kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb ]; then
-            cp kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb AnyKernel3/dtb
-          elif [ -f kernel-source/out/arch/arm64/boot/dtb ] ; then
-            cp kernel-source/out/arch/arm64/boot/dtb AnyKernel3/dtb
-          fi
-          
-          mkdir -p AnyKernel3/vendor_ramdisk/modules
-          find modules_out/ -name "*.ko" -exec cp {} AnyKernel3/vendor_ramdisk/modules/ \;
+          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
 
       - name: Assemble Final Archive Zip File
         run: |
+          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
+          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
+          mkdir -p AnyKernel3/vendor_ramdisk/modules
+          find modules_out/ -name "*.ko" -exec cp {} AnyKernel3/vendor_ramdisk/modules/ \;
           cd AnyKernel3
-          zip -r9 ../Next-Gen-Vili-Master-Flashable.zip * -x .git\* README.md
+          zip -r9 ../Next-Gen-Vili-Fixed.zip * -x .git\* README.md
 
       - name: Upload Recovery Flashable ZIP Package
         uses: actions/upload-artifact@v4
         with:
-          name: Master-Kernel-Vili-Universal
-          path: Next-Gen-Vili-Master-Flashable.zip
+          name: HyperOS-Kernel-Vili
+          path: Next-Gen-Vili-Fixed.zip
           
