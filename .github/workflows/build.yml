@@ -126,12 +126,12 @@ jobs:
           EOF
           echo "-> Modified anykernel.sh scripting instructions dynamically injected!"
 
-      - name: Execute Main Source Build Process
+      - name: Execute Main Source Build Process (In-Tree Mode)
         run: |
           cd kernel-source
           
-          # Clean previous build artifacts safely by removing out directory
-          rm -rf out
+          # Clean workspace completely
+          git clean -fdx
           
           export PATH="$(pwd)/../clang/bin:$PATH"
           export ARCH=arm64
@@ -141,25 +141,25 @@ jobs:
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export CC=clang
           
-          # Initialize compiler layout with our freshly updated defconfig configuration
+          # In-tree build execution (Removed O=out parameter to bypass tree-clean errors)
           make vili_defconfig
-          make -j$(nproc --all) O=out
+          make -j$(nproc --all)
           
-          # Compile structural hardware module driver objects (.ko files)
-          make -j$(nproc --all) O=out modules
-          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
+          # Compile modules directly
+          make -j$(nproc --all) modules
+          make INSTALL_MOD_PATH=../modules_out modules_install
 
       - name: Stage Asset Package Directories
         run: |
-          # Copy fundamental binary components into the zip template root
-          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
-          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
+          # Copy compiled binaries directly from in-tree architecture path
+          cp kernel-source/arch/arm64/boot/Image AnyKernel3/
+          cp kernel-source/arch/arm64/boot/dtbo.img AnyKernel3/ || true
           
           # Isolate and locate separate hardware tables (dtb files)
-          if [ -f kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb ]; then
-            cp kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb AnyKernel3/dtb
-          elif [ -f kernel-source/out/arch/arm64/boot/dtb ] ; then
-            cp kernel-source/out/arch/arm64/boot/dtb AnyKernel3/dtb
+          if [ -f kernel-source/arch/arm64/boot/dts/vendor/qcom/vili.dtb ]; then
+            cp kernel-source/arch/arm64/boot/dts/vendor/qcom/vili.dtb AnyKernel3/dtb
+          elif [ -f kernel-source/arch/arm64/boot/dtb ] ; then
+            cp kernel-source/arch/arm64/boot/dtb AnyKernel3/dtb
           fi
           
           # Gather freshly compiled kernel modules and place them inside the vendor ramdisk structure
