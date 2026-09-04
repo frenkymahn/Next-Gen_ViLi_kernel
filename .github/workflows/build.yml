@@ -130,9 +130,8 @@ jobs:
         run: |
           cd kernel-source
           
-          # Clean source tree correctly INSIDE kernel-source folder
-          make mrproper
-          make clean
+          # Clean previous build artifacts safely by removing out directory
+          rm -rf out
           
           export PATH="$(pwd)/../clang/bin:$PATH"
           export ARCH=arm64
