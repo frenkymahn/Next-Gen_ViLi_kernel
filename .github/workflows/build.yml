@@ -111,29 +111,39 @@ jobs:
         run: |
           cd kernel-source
           
-          # Clang and LLVM Environment Mapping
-          export PATH="$(pwd)/../clang/bin:$PATH"
+          export TOOLCHAIN_BIN="$(pwd)/../clang/bin"
+          export PATH="$TOOLCHAIN_BIN:$PATH"
           export ARCH=arm64
           export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          export CLANG_TRIPLE=aarch64-linux-gnu-
-          
-          export CC=clang
-          export LD=ld.lld
-          export AR=llvm-ar
-          export NM=llvm-nm
-          export OBJCOPY=llvm-objcopy
-          export OBJDUMP=llvm-objdump
-          export STRIP=llvm-strip
           
           rm -rf out
           
-          make O=out vili_defconfig
-          make -j$(nproc --all) O=out
+          # FIXED: Clean LLVM build arguments without missing aarch64 cross-gcc wrappers
+          make -j$(nproc --all) O=out vili_defconfig
+          make -j$(nproc --all) O=out \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CLANG_TRIPLE=aarch64-linux-gnu-
           
-          make -j$(nproc --all) O=out modules
-          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
+          make -j$(nproc --all) O=out \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            modules
+            
+          make -j$(nproc --all) O=out \
+            INSTALL_MOD_PATH=../modules_out \
+            modules_install
 
       - name: Stage Asset Package Directories
         run: |
