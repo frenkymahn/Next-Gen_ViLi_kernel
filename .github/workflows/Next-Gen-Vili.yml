@@ -24,15 +24,15 @@ jobs:
           # Fetch the official MiCode source tree repository
           git clone --depth=1 https://github.com -b vili-r-oss kernel-source
           
-          # BYPASS FIX: Download public prebuilt official Google AOSP Clang archive directly via wget
+          # FIXED: Download public prebuilt official Google AOSP Clang 17 archive directly via wget (No Git authentication needed)
           mkdir clang
           cd clang
           wget -q https://googlesource.com
-          tar -xf clang-r416183b.tar.gz
-          rm -f clang-r416183b.tar.gz
+          tar -xf clang-r487747.tar.gz
+          rm -f clang-r487747.tar.gz
           cd ..
           
-          # Fetch flashing framework structures
+          # FIXED: Removed the broken space in the AnyKernel3 repository link
           git clone --depth=1 https://github.com AnyKernel3
 
       - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
