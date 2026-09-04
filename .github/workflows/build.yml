@@ -28,7 +28,7 @@ jobs:
           
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
 
-      - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
+      - name: Inject Defconfig Custom Tuning (Universal Multi-ROM Bypass)
         run: |
           cd kernel-source/arch/arm64/configs/
           
@@ -38,14 +38,20 @@ jobs:
           echo "# ========================================================" >> vili_defconfig
           echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
           echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
+          
+          echo "# Re-route eBPF sub-systems to feed correct security packets to modern ports" >> vili_defconfig
           echo "CONFIG_BPF=y" >> vili_defconfig
           echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
           echo "CONFIG_BPF_JIT=y" >> vili_defconfig
           echo "CONFIG_CGROUP_BPF=y" >> vili_defconfig
           echo "CONFIG_NET_CLS_ACT=y" >> vili_defconfig
           echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
+          
+          echo "# Bypass SELinux layout block crashes on modified ports" >> vili_defconfig
           echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
           echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> vili_defconfig
+          
+          echo "# Strip verification and dm-verity traps causing hardware hangup loops" >> vili_defconfig
           echo "CONFIG_DM_VERITY=n" >> vili_defconfig
           echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
 
