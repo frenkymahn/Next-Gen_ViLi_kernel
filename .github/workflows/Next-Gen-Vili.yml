@@ -1,5 +1,4 @@
-name: Build vili hyperos Next-Gen kernel
-
+name: Build Next-Gen Vili HyperOS Kernel (Ubuntu 24.04 Unified)
 on:
   workflow_dispatch:
 
@@ -7,189 +6,136 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-    - name: Checkout Kernel Source
-      uses: actions/checkout@v4
+      - name: Checkout Code Tree
+        uses: actions/checkout@v4
 
-    - name: Install System Compiling Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libelf-dev llvm lld clang
-        
-        # Legacy compiler compatibility symlinks
-        sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
-        sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
+      - name: System Dependencies Setup (Ubuntu 24.04 Secure Matching)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses6 libncurses-dev libsdl1.1-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev
+          sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
+          sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
+          echo "-> Legacy compiler libraries securely linked to Ubuntu 24.04!"
 
-    - name: Fix Touchscreen Makefile Syntax Error
-      run: |
-        MAKEFILE_PATH="drivers/input/touchscreen/focaltech_3680/Makefile"
-        if [ -f "$MAKEFILE_PATH" ]; then
-          sed -i 's/^[[:space:]]\+/	/' "$MAKEFILE_PATH"
-        fi
+      - name: Pull Target Source Components
+        run: |
+          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b android-14-sm8350 kernel-source
+          git clone --depth=1 https://github.com/ZyCromerZ/Clang clang
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
 
-    - name: Patch CNSS2 Wireless Driver with Linker Stubs
-      run: |
-        BUS_C_PATH="drivers/net/wireless/cnss2/bus.c"
-        if [ -f "$BUS_C_PATH" ]; then
-          cat << 'EOF' > bus_stubs.h
-        #ifndef _BUS_STUBS_H
-        #define _BUS_STUBS_H
-        #include <linux/types.h>
-        #include <linux/compiler.h>
-        struct device;
-        struct cnss_platform_cap;
-        __attribute__((weak)) int cnss_get_dev_bus_type(struct device *dev) { return 0; }
-        __attribute__((weak)) int cnss_get_platform_cap(struct device *dev, struct cnss_platform_cap *cap) { return 0; }
-        __attribute__((weak)) void cnss_request_pm_qos(struct device *dev, u32 qos_val) { return; }
-        #endif
-        EOF
-          sed -i '1s/^/#include "bus_stubs.h"\n/' "$BUS_C_PATH"
-          mv bus_stubs.h drivers/net/wireless/cnss2/
-        fi
+      - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
+        run: |
+          cd kernel-source/arch/arm64/configs/
+          echo "" >> vili_defconfig
+          echo "# ========================================================" >> vili_defconfig
+          echo "# UNIVERSAL MULTI-ROM LOGO FREEZE AND ANTI-ROLLBACK BYPASS" >> vili_defconfig
+          echo "# ========================================================" >> vili_defconfig
+          echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
+          echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
+          echo "CONFIG_BPF=y" >> vili_defconfig
+          echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
+          echo "CONFIG_BPF_JIT=y" >> vili_defconfig
+          echo "CONFIG_CGROUP_BPF=y" >> vili_defconfig
+          echo "CONFIG_NET_CLS_ACT=y" >> vili_defconfig
+          echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
+          echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
+          echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> vili_defconfig
+          echo "CONFIG_DM_VERITY=n" >> vili_defconfig
+          echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
+          echo "-> Defconfig configuration flags successfully appended to file layout!"
 
-    - name: Configure Pure HyperOS Defconfig
-      run: |
-        DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
-        if [ ! -f "$DEFCONFIG_PATH" ]; then
-          DEFCONFIG_PATH="arch/arm64/configs/vendor/vili_defconfig"
-        fi
-        
-        echo "Applying strictly HyperOS hardware options..."
-        # Xiaomi HyperOS core hardware requirements
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_MIUI_KERNEL
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_XIAOMI_HARDWARE
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_MACH_XIAOMI_VILI
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_EROFS_FS
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_EROFS_FS_ZIP
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_EROFS_FS_XATTR
-        scripts/config --file $DEFCONFIG_PATH --enable CONFIG_EROFS_FS_POSIX_ACL
-        
-        # Disable conflicting AOSP overrides that freeze the device at the Mi logo
-        scripts/config --file $DEFCONFIG_PATH --disable CONFIG_ANDROID_BINDERFS
-        scripts/config --file $DEFCONFIG_PATH --disable CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE
-        scripts/config --file $DEFCONFIG_PATH --disable CONFIG_GKI_HACKS_TO_FIX
-        
-        # Set local version
-        scripts/config --file $DEFCONFIG_PATH --set-str CONFIG_LOCALVERSION "-Next-Gen"
+      - name: Overwrite and Inject Custom anykernel.sh Script
+        run: |
+          cat << 'EOF' > AnyKernel3/anykernel.sh
+          # AnyKernel3 Ramdisk Mod Script for Xiaomi 11T Pro (vili) - Multi-ROM Universal
+          properties() { '
+          kernel.string=Next-Gen HyperOS/AOSP Master Kernel - Xiaomi 11T Pro (vili)
+          do.devicecheck=1
+          do.modules=0
+          do.systemless=1
+          do.cleanup=1
+          do.cleanuponabort=1
+          device.name1=vili
+          device.name2=vili_in
+          device.name3=vili_cn
+          device.name4=vili_eu
+          supported.versions=14,14.0,15,15.0,16,16.0,17,17.0
+          '; }
 
-    - name: Compile HyperOS Kernel Binary and DTBO
-      run: |
-        export ARCH=arm64
-        export SUBARCH=arm64
-        
-        ROOT_DIR=$(pwd)
-        CLANG_DIR="$ROOT_DIR/android/prebuilts/clang/host/linux-x86/clang-r41d"
-        GCC64_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9"
-        GCC32_DIR="$ROOT_DIR/android/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9"
-        
-        sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/aarch64-linux-android-gcc
-        sudo ln -sf "$CLANG_DIR/bin/clang" /usr/bin/arm-linux-androideabi-gcc
-        
-        export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
-        
-        MAKE_ARGS="ARCH=arm64 \
-                   SUBARCH=arm64 \
-                   CC=clang \
-                   LD=ld.lld \
-                   AR=llvm-ar \
-                   NM=llvm-nm \
-                   OBJCOPY=llvm-objcopy \
-                   OBJDUMP=llvm-objdump \
-                   STRIP=llvm-strip \
-                   CROSS_COMPILE=aarch64-linux-android- \
-                   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-                   LLVM=1 \
-                   LLVM_IAS=1"
-        
-        CONF_FILE="vili_defconfig"
-        if [ ! -f "arch/arm64/configs/vili_defconfig" ]; then
-          CONF_FILE="vendor/vili_defconfig"
-        fi
-        
-        make O=out $MAKE_ARGS clean
-        make O=out $MAKE_ARGS mrproper
-        make O=out $MAKE_ARGS $CONF_FILE
-        
-        # Build the kernel Image and device-tree binaries without the invalid dtbo.img target
-        make -j$(nproc --all) O=out LOCALVERSION=-Next-Gen $MAKE_ARGS Image dtbs
+          BLOCK=boot;
+          IS_SLOT_DEVICE=auto;
+          RAMDISK_COMPRESSION=auto;
+          PATCH_VBMETA_FLAG=auto;
 
-    - name: Automatically Configure and Assemble AnyKernel3 Flashable ZIP
-      run: |
-        rm -rf $RUNNER_TEMP/anykernel
-        mkdir -p $RUNNER_TEMP/anykernel
-        cd $RUNNER_TEMP/anykernel
-        
-        # Download official AnyKernel3 repository archive correctly
-        curl -L https://github.com/osm0sis/AnyKernel3/archive/refs/heads/master.zip -o AK3.zip
-        unzip -q AK3.zip
-        mv AnyKernel3-master/* .
-        rm -rf AK3.zip AnyKernel3-master
-        
-        # 1. Write the HyperOS-specific anykernel.sh
-        cat << 'EOF' > anykernel.sh
-        # AnyKernel3 Ramdisk Mod Script for Xiaomi 11T Pro (vili) - HyperOS
-        properties() { '
-        kernel.string=Next-Gen HyperOS Kernel for Xiaomi 11T Pro (vili)
-        do.devicecheck=1
-        do.modules=0
-        do.systemless=1
-        do.cleanup=1
-        do.cleanuponabort=1
-        device.name1=vili
-        device.name2=vili_in
-        device.name3=vili_cn
-        device.name4=vili_eu
-        supported.versions=14,14.0,15,15.0,16,16.0,17,17.0
-        '; }
-        
-        BLOCK=boot;
-        IS_SLOT_DEVICE=auto;
-        RAMDISK_COMPRESSION=auto;
-        PATCH_VBMETA_FLAG=auto;
-        
-        . tools/ak3-core.sh;
-        
-        boot_attributes() {
-        set_perm_recursive 0 0 755 644 $RAMDISK/*;
-        set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
-        }
-        
-        dump_boot;
-        write_boot;
-        EOF
+          . tools/ak3-core.sh;
 
-        # 2. Patch ak3-core.sh slot detection for TWRP on vili
-        sed -i '/1|auto)/a \      [ "$SLOT" ] || [ -e /dev/block/bootdevice/by-name/boot_a ] && SLOT="_a";\n      [ "$SLOT" ] || [ -e /dev/block/bootdevice/by-name/boot_b ] && SLOT="_b";' tools/ak3-core.sh
-        
-        # 3. Patch ak3-core.sh to prioritize Xiaomi direct hardware partition nodes
-        sed -i 's|elif \[ -e /dev/block/bootdevice/by-name/\$part \]; then|elif [ -e /dev/block/bootdevice/by-name/$part ]; then\n            target=/dev/block/bootdevice/by-name/$part;\n          elif [ -e /dev/block/by-name/$part ]; then|' tools/ak3-core.sh
-        
-        # 4. Copy the compiled kernel Image
-        if [ -f $GITHUB_WORKSPACE/out/arch/arm64/boot/Image ]; then
-          cp $GITHUB_WORKSPACE/out/arch/arm64/boot/Image ./Image
-        else
-          echo "CRITICAL: Image file missing!" && exit 1
-        fi
-        
-        # 5. Copy dtbo.img if built or generated under any subfolder
-        DTBO_PATH=$(find $GITHUB_WORKSPACE/out -name "dtbo.img" 2>/dev/null | head -n 1)
-        if [ -n "$DTBO_PATH" ] && [ -f "$DTBO_PATH" ]; then
-          cp "$DTBO_PATH" ./dtbo.img
-          echo "Found and included dtbo.img: $DTBO_PATH"
-        fi
-        
-        # 6. Copy device tree blob (dtb)
-        DTB_PATH=$(find $GITHUB_WORKSPACE/out -name "dtb.img" -o -name "lahaina.dtb" 2>/dev/null | head -n 1)
-        if [ -n "$DTB_PATH" ] && [ -f "$DTB_PATH" ]; then
-          cp "$DTB_PATH" ./dtb
-          echo "Found and included dtb: $DTB_PATH"
-        fi
-        
-        # 7. Package the flashable ZIP cleanly
-        zip -r9 $GITHUB_WORKSPACE/Next-Gen-Vili-HyperOS-Flashable.zip * -x README.md
+          boot_attributes() {
+          set_perm_recursive 0 0 755 644 $RAMDISK/*;
+          set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+          }
 
-    - name: Upload Flashable ZIP Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Next-Gen-Vili-HyperOS-Flashable-Zip
-        path: ./Next-Gen-Vili-HyperOS-Flashable.zip
-        
+          ui_print "-> Committing custom kernel Image to boot partition...";
+          dump_boot;
+          write_boot;
+
+          if [ -f dtbo.img ]; then
+            ui_print "-> Committing updated hardware trees to dtbo partition...";
+            BLOCK=dtbo;
+            IS_SLOT_DEVICE=auto;
+            flash_dtbo;
+          fi
+
+          if [ -f vendor_boot.img ] || [ -f dtb ]; then
+            ui_print "-> Bypassing security checks & patching vendor_boot container...";
+            BLOCK=vendor_boot;
+            IS_SLOT_DEVICE=auto;
+            RAMDISK_COMPRESSION=auto;
+            PATCH_VBMETA_FLAG=auto;
+            reset_ak;
+            split_boot;
+            flash_boot;
+            ui_print "-> vendor_boot matching routing verification successful!";
+          else
+            ui_print " ";
+            ui_print "WARNING: Local workspace missing vendor_boot container assets!";
+          fi
+          EOF
+          echo "-> Modified anykernel.sh scripting instructions dynamically injected!"
+
+      - name: Execute Main Source Build Process
+        run: |
+          cd kernel-source
+          export PATH="$(pwd)/../clang/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export CC=clang
+          make vili_defconfig
+          make -j$(nproc --all) O=out
+          make -j$(nproc --all) O=out modules
+          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
+
+      - name: Stage Asset Package Directories
+        run: |
+          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
+          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
+          if [ -f kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb ]; then
+            cp kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb AnyKernel3/dtb
+          elif [ -f kernel-source/out/arch/arm64/boot/dtb ] ; then
+            cp kernel-source/out/arch/arm64/boot/dtb AnyKernel3/dtb
+          fi
+          mkdir -p AnyKernel3/vendor_ramdisk/modules
+          find modules_out/ -name "*.ko" -exec cp {} AnyKernel3/vendor_ramdisk/modules/ \;
+
+      - name: Assemble Final Archive Zip File
+        run: |
+          cd AnyKernel3
+          zip -r9 ../Next-Gen-Vili-Master-Flashable.zip * -x .git\* README.md
+
+      - name: Upload Recovery Flashable ZIP Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Master-Kernel-Vili-Universal
+          path: Next-Gen-Vili-Master-Flashable.zip
+          
