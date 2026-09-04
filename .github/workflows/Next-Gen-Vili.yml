@@ -21,13 +21,13 @@ jobs:
 
       - name: Pull Target Source Components
         run: |
-          # യഥാർത്ഥ MiCode കർണൽ സോഴ്സ് റീപൊസിറ്ററി
+          # Official MiCode kernel source repository
           git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
           
-          # Clang ടൂൾചെയിൻ റീപൊസിറ്ററി
+          # Clang toolchain repository
           git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r416183b clang
           
-          # AnyKernel3 ഫ്രെയിംവർക്ക് റീപൊസിറ്ററി
+          # AnyKernel3 flashing framework repository
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
 
       - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
