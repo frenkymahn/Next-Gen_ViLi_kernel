@@ -12,7 +12,7 @@ jobs:
       - name: System Dependencies Setup (Ubuntu 24.04 Cleaned)
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev
+          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev wget
           
           # UBUNTU 24.04 HOTFIX: Map legacy terminal linker layers dropped by the updated OS build
           sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
@@ -22,13 +22,18 @@ jobs:
       - name: Pull Target Source Components
         run: |
           # Fetch the official MiCode source tree repository
-          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
+          git clone --depth=1 https://github.com -b vili-r-oss kernel-source
           
-          # Clang toolchain repository setup
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r416183b clang
+          # BYPASS FIX: Download public prebuilt official Google AOSP Clang archive directly via wget
+          mkdir clang
+          cd clang
+          wget -q https://googlesource.com
+          tar -xf clang-r416183b.tar.gz
+          rm -f clang-r416183b.tar.gz
+          cd ..
           
           # Fetch flashing framework structures
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+          git clone --depth=1 https://github.com AnyKernel3
 
       - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
         run: |
@@ -131,7 +136,6 @@ jobs:
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          export CLANG_TRIPLE=aarch64-linux-gnu-
           export CC=clang
           
           # Initialize compiler layout with our freshly updated defconfig configuration
