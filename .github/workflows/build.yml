@@ -60,17 +60,27 @@ jobs:
         run: |
           cd kernel-source
           
-          # 1. Fix stack_pointer.h register error
-          if [ -f arch/arm64/include/asm/stack_pointer.h ]; then
-            sed -i 's/register unsigned long current_stack_pointer asm ("sp");/volatile register unsigned long current_stack_pointer asm ("sp");/g' arch/arm64/include/asm/stack_pointer.h || true
-          fi
+          # 1. Permanently rewrite stack_pointer.h to bypass Clang sp-register restriction
+          cat << 'EOF' > arch/arm64/include/asm/stack_pointer.h
+          #ifndef __ASM_STACK_POINTER_H
+          #define __ASM_STACK_POINTER_H
+
+          static inline unsigned long __current_stack_pointer(void)
+          {
+              unsigned long sp;
+              __asm__ ("mov %0, sp" : "=r" (sp));
+              return sp;
+          }
+
+          #define current_stack_pointer (__current_stack_pointer())
+
+          #endif
+          EOF
+
+          # 2. Fix KGDB brk-imm constraint range errors safely
+          find arch/arm64/ -type f \( -name "brk-imm.h" -o -name "kgdb.h" \) -exec sed -i 's/0x401/0x400/g' {} + || true
           
-          # 2. Fix KGDB constraint out of range errors for modern compilers
-          if [ -f arch/arm64/include/asm/brk-imm.h ]; then
-            sed -i 's/#define KGDB_COMPILED_DBG_BRK_IMM\t\t0x401/#define KGDB_COMPILED_DBG_BRK_IMM\t\t0x400/g' arch/arm64/include/asm/brk-imm.h || true
-          fi
-          
-          echo "-> All source code patches for modern Clang successfully applied!"
+          echo "-> Robust source code patches for modern Clang successfully applied!"
 
       - name: Overwrite and Inject Custom anykernel.sh Script
         run: |
@@ -188,4 +198,4 @@ jobs:
         with:
           name: Master-Kernel-Vili-Universal
           path: Next-Gen-Vili-Master-Flashable.zip
-          
+         
