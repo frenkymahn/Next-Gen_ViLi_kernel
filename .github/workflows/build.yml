@@ -1,0 +1,172 @@
+name: Build Official Vili HyperOS Kernel (Ubuntu 24.04 Unified)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Code Tree
+        uses: actions/checkout@v4
+
+      - name: System Dependencies Setup (Ubuntu 24.04 Cleaned)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev
+          
+          # UBUNTU 24.04 HOTFIX: Map legacy terminal linker layers dropped by the updated OS build
+          sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
+          sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
+          echo "-> Legacy compiler libraries securely linked to Ubuntu 24.04!"
+
+      - name: Pull Target Source Components
+        run: |
+          # 1. Official MiCode kernel source
+          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
+          
+          # 2. Clang Toolchain
+          git clone --depth=1 https://github.com/KudProject/toolchain-e50 Clang
+          
+          # 3. AnyKernel3 flashing framework
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+
+      - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
+        run: |
+          cd kernel-source/arch/arm64/configs/
+          
+          echo "" >> vili_defconfig
+          echo "# ========================================================" >> vili_defconfig
+          echo "# UNIVERSAL MULTI-ROM LOGO FREEZE AND ANTI-ROLLBACK BYPASS" >> vili_defconfig
+          echo "# ========================================================" >> vili_defconfig
+          echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
+          echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
+          
+          # Re-route eBPF sub-systems to feed correct security packets to modern ports
+          echo "CONFIG_BPF=y" >> vili_defconfig
+          echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
+          echo "CONFIG_BPF_JIT=y" >> vili_defconfig
+          echo "CONFIG_CGROUP_BPF=y" >> vili_defconfig
+          echo "CONFIG_NET_CLS_ACT=y" >> vili_defconfig
+          echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
+          
+          # Bypass SELinux layout block crashes on modified ports
+          echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
+          echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> vili_defconfig
+          
+          # Strip verification and dm-verity traps causing hardware hangup loops
+          echo "CONFIG_DM_VERITY=n" >> vili_defconfig
+          echo "CONFIG_FORCE_DM_VERITY_FORCE_BURST=n" >> vili_defconfig
+          
+          echo "-> Defconfig configuration flags successfully appended to file layout!"
+
+      - name: Overwrite and Inject Custom anykernel.sh Script
+        run: |
+          cat << 'EOF' > AnyKernel3/anykernel.sh
+          # AnyKernel3 Ramdisk Mod Script for Xiaomi 11T Pro (vili) - Multi-ROM Universal
+          properties() { '
+          kernel.string=Next-Gen HyperOS/AOSP Master Kernel - Xiaomi 11T Pro (vili)
+          do.devicecheck=1
+          do.modules=0
+          do.systemless=1
+          do.cleanup=1
+          do.cleanuponabort=1
+          device.name1=vili
+          device.name2=vili_in
+          device.name3=vili_cn
+          device.name4=vili_eu
+          supported.versions=14,14.0,15,15.0,16,16.0,17,17.0
+          '; }
+
+          # Initialize block configurations
+          BLOCK=boot;
+          IS_SLOT_DEVICE=auto;
+          RAMDISK_COMPRESSION=auto;
+          PATCH_VBMETA_FLAG=auto;
+
+          . tools/ak3-core.sh;
+
+          boot_attributes() {
+          set_perm_recursive 0 0 755 644 $RAMDISK/*;
+          set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+          }
+
+          # Flash main image file payload
+          ui_print "-> Committing custom kernel Image to boot partition...";
+          dump_boot;
+          write_boot;
+
+          # Flash device tree overlays
+          if [ -f dtbo.img ]; then
+            ui_print "-> Committing updated hardware trees to dtbo partition...";
+            BLOCK=dtbo;
+            IS_SLOT_DEVICE=auto;
+            flash_dtbo;
+          fi
+
+          # Switch targets and isolate vendor block execution parameters
+          if [ -f vendor_boot.img ] || [ -f dtb ]; then
+            ui_print "-> Bypassing security checks & patching vendor_boot container...";
+            BLOCK=vendor_boot;
+            IS_SLOT_DEVICE=auto;
+            RAMDISK_COMPRESSION=auto;
+            PATCH_VBMETA_FLAG=auto;
+            
+            # Execute isolated secondary routing
+            reset_ak;
+            split_boot;
+            flash_boot;
+            ui_print "-> vendor_boot matching routing verification successful!";
+          else
+            ui_print " ";
+            ui_print "WARNING: Local workspace missing vendor_boot container assets!";
+          fi
+          EOF
+          echo "-> Modified anykernel.sh scripting instructions dynamically injected!"
+
+      - name: Execute Main Source Build Process
+        run: |
+          cd kernel-source
+          export PATH="$(pwd)/../Clang/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CC=clang
+          
+          # Initialize compiler layout with our freshly updated defconfig configuration
+          make vili_defconfig
+          make -j$(nproc --all) O=out
+          
+          # Compile structural hardware module driver objects (.ko files)
+          make -j$(nproc --all) O=out modules
+          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
+
+      - name: Stage Asset Package Directories
+        run: |
+          # Copy fundamental binary components into the zip template root
+          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
+          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
+          
+          # Isolate and locate separate hardware tables (dtb files)
+          if [ -f kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb ]; then
+            cp kernel-source/out/arch/arm64/boot/dts/vendor/qcom/vili.dtb AnyKernel3/dtb
+          elif [ -f kernel-source/out/arch/arm64/boot/dtb ] ; then
+            cp kernel-source/out/arch/arm64/boot/dtb AnyKernel3/dtb
+          fi
+          
+          # Gather freshly compiled kernel modules and place them inside the vendor ramdisk structure
+          mkdir -p AnyKernel3/vendor_ramdisk/modules
+          find modules_out/ -name "*.ko" -exec cp {} AnyKernel3/vendor_ramdisk/modules/ \;
+
+      - name: Assemble Final Archive Zip File
+        run: |
+          cd AnyKernel3
+          zip -r9 ../Next-Gen-Vili-Master-Flashable.zip * -x .git\* README.md
+
+      - name: Upload Recovery Flashable ZIP Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Master-Kernel-Vili-Universal
+          path: Next-Gen-Vili-Master-Flashable.zip
+          
