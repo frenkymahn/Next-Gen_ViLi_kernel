@@ -24,12 +24,15 @@ jobs:
           # 1. Official MiCode kernel source
           git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b vili-r-oss kernel-source
           
-          # 2. Clang Toolchain
-          git clone --depth=1 https://github.com/KudProject/toolchain-e50 Clang
+          # 2. Direct Clang archive download (Fixes line-break/truncation issues completely)
+          mkdir -p clang
+          cd clang
+          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz || curl -LO https://gitlab.com/ThankYouMario/android_prebuilts_clang_host_linux-x86_clang-r416183b/-/raw/main/clang-r416183b.tar.gz
+          cd ..
           
           # 3. AnyKernel3 flashing framework
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
-
+          
       - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze)
         run: |
           cd kernel-source/arch/arm64/configs/
