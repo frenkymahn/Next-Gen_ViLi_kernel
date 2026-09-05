@@ -1,116 +1,54 @@
-name: Build Next-Gen Lahaina Vili HyperOS Universal Kernel
+name: Build Xiaomi 11T Pro (vili) Kernel & Vendor_Boot
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Kernel Source Branch'
+        required: true
+        default: 'main'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Custom Next-Gen Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          submodules: true
+          branch: ${{ github.event.inputs.branch }}
 
-      - name: Clone Official Vili OSS Base & Multi-SDK Sync
-        run: |
-          git clone https://github.com/Xiaomi-OSS-AOSP-Projects/kernel_xiaomi_vili.git -b android-12-mmi official_vili_kernel || true
-
-      - name: Integrate KernelSU-Next v3.0.0
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s v3.0.0
-
-      - name: Setup Build Environment & Stable Clang Toolchain
+      - name: Setup Environment & Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev wget xz-utils gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-          
-          mkdir -p toolchain/clang
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git toolchain/clang
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev
 
-      - name: Fix All Kernel Errors Automatically
+      - name: Setup Clang Toolchain
+        uses: stanley-zhong/setup-clang@v1
+        with:
+          version: 'latest'
+
+      - name: Build Kernel, DTB, DTBO and Vendor_Boot
         run: |
-          CLANG_PATH="$(pwd)/toolchain/clang/bin"
           export ARCH=arm64
           export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
+          export PATH="/usr/lib/llvm/bin:$PATH"
           
-          # Remove broken focaltech driver and clear references
-          rm -rf drivers/input/touchscreen/focaltech_3680 || true
-          if [ -f "drivers/input/touchscreen/Kconfig" ]; then
-            sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig || true
-          fi
-          
-          # Fix WALT trace header issues
-          if [ -f "kernel/sched/walt/trace.c" ]; then
-            sed -i 's|#include <trace.h>|#include "../trace.h"|g' kernel/sched/walt/trace.c || true
-          fi
-          
+          # Clean source to prevent old object errors
           make clean && make mrproper
           
-          if [ -f "official_vili_kernel/arch/arm64/configs/vili_defconfig" ]; then
-            cp official_vili_kernel/arch/arm64/configs/vili_defconfig arch/arm64/configs/vili_defconfig
-          fi
+          # Load vili defconfig
+          make O=out vili_defconfig
           
-          if [ -d "official_vili_kernel/arch/arm64/boot/dts/qcom" ]; then
-            rm -rf arch/arm64/boot/dts/qcom/*
-            cp -r official_vili_kernel/arch/arm64/boot/dts/qcom/* arch/arm64/boot/dts/qcom/
-          fi
-          
-          make vili_defconfig
-          
-          scripts/config --set-str CONFIG_LOCALVERSION "-Next-Gen"
-          scripts/config --disable CONFIG_WERROR
-          
-          make olddefconfig
-          
-          # Build securely with explicit HOSTCC and Clang parameters
-          make -j$(nproc) CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
-          make dtbs CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+          # Compile Kernel with safe -j4 core count to prevent Exit Code 2
+          make O=out -j4 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Package with AnyKernel3 (Unified Flashable ZIP)
-        run: |
-          git clone https://github.com/osm0sis/AnyKernel3.git anykernel
-          rm -rf anykernel/.git
-          
-          cp arch/arm64/boot/Image.gz anykernel/
-          cp arch/arm64/boot/dts/qcom/sm8350.dtb anykernel/dtb || cp arch/arm64/boot/dts/qcom/*.dtb anykernel/dtb || true
-          cp arch/arm64/boot/dtbo.img anykernel/ || true
-          
-          cd anykernel
-          
-          cat << 'EOF' > anykernel.sh
-          properties() {
-          kernel.string=Next-Gen Lahaina Universal Kernel
-          do.devicecheck=0
-          do.modules=0
-          do.systemfs=0
-          do.cleanup=1
-          do.cleanuponabort=0
-          device.name1=vili
-          device.name2=lahaina
-          device.name3=Xiaomi 11T Pro
-          }
-
-          block device;
-          is_slot_device=1;
-          ramdisk_compression=auto;
-
-          . tools/ak3-core.sh
-
-          dump_boot;
-          write_boot;
-
-          if [ -f "$home/dtbo.img" ]; then
-            flash_block dtbo "$home/dtbo.img";
-          fi
-          EOF
-
-          zip -r ../Next-Gen-Lahaina-Kernel-$(date +%Y%m%d).zip *
-
-      - name: Upload Final Clean Kernel Artifact
+      - name: Package Output Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Next-Gen-Lahaina-Kernel-Zip
-          path: Next-Gen-Lahaina-Kernel-*.zip
-          
+          name: vili-next-gen-kernel-artifacts
+          path: |
+            out/arch/arm64/boot/Image.gz
+            out/arch/arm64/boot/dtb
+            out/arch/arm64/boot/dtbo.img
+            out/arch/arm64/boot/vendor_boot.img
+            
