@@ -3,7 +3,7 @@
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
-#include "qc_vas.h"
+#include "trace.h"
 
 #ifdef CONFIG_SCHED_WALT
 static inline void __window_data(u32 *dst, u32 *src)
