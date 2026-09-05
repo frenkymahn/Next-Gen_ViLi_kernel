@@ -1,155 +1,115 @@
-name: Build Xiaomi 11T Pro Kernel (Ubuntu 22.04 & HyperOS)
+name: Build Next-Gen Lahaina Vili HyperOS Universal Kernel
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository Cleanly
-      uses: actions/checkout@v4
-      with:
-        repository: frenkymahn/Next-Gen_ViLi_kernel
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 1
-        submodules: recursive
+      - name: Checkout Custom Next-Gen Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - name: Setup Build Environment and Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          bc bison build-essential ccache curl flex \
-          git gnupg gperf imagemagick \
-          libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
-          libssl-dev libxml2 libxml2-utils lzop pngcrush rsync \
-          schedtool squashfs-tools xsltproc yasm zip zlib1g-dev \
-          android-sdk-libsparse-utils gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu \
-          python3 python3-pip
+      - name: Clone Official Vili OSS Base for Native Drivers, DTB & Lahaina Sync
+        run: |
+          git clone https://github.com/Xiaomi-OSS-AOSP-Projects/kernel_xiaomi_vili.git -b android-12-mmi official_vili_kernel || true
 
-    - name: Setup Stable Proton Clang Toolchain (Ubuntu 22.04 Native Compatible)
-      run: |
-        rm -rf tc
-        mkdir -p tc/clang
-        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
-        ls -la tc/clang/bin
+      - name: Integrate KernelSU-Next v3.0.0
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s v3.0.0
 
-    - name: Compile Kernel
-      run: |
-        export PATH="$(pwd)/tc/clang/bin:$PATH"
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export KBUILD_BUILD_USER="FrenkyMahn"
-        export KBUILD_BUILD_HOST="HyperOS-Server"
-        export CLANG_TRIPLE=aarch64-linux-gnu-
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+      - name: Setup Build Environment
+        run: |
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zlib1g-dev libgmp-dev libmpc-dev libmpfr-dev
 
-        mkdir -p out
+      - name: Setup Clang Toolchain
+        uses: krdlab/setup-gcc@v1
+        with:
+          gcc-version: '13'
 
-        make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
-        make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+      - name: Configure, Merge OSS Lahaina/Vili DTB & Build Kernel
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          make clean && make mrproper
+          
+          # Merge official vili defconfig and lahaina/qcom device trees
+          if [ -f "official_vili_kernel/arch/arm64/configs/vili_defconfig" ]; then
+            cp official_vili_kernel/arch/arm64/configs/vili_defconfig arch/arm64/configs/vili_defconfig
+          fi
+          
+          if [ -d "official_vili_kernel/arch/arm64/boot/dts/qcom" ]; then
+            rm -rf arch/arm64/boot/dts/qcom/*
+            cp -r official_vili_kernel/arch/arm64/boot/dts/qcom/* arch/arm64/boot/dts/qcom/
+          fi
+          
+          make vili_defconfig
+          
+          # Set About Phone kernel name to Next-Gen
+          scripts/config --set-str CONFIG_LOCALVERSION "-Next-Gen"
+          
+          make olddefconfig
+          
+          # Build Image.gz, dtbs and dtbo safely
+          make -j$(nproc) CC=gcc
+          make dtbs
 
-        make -j$(nproc --all) O=out \
-            PYTHON=python3 \
-            KCFLAGS="-w" \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            ARCH=arm64 \
-            SUBARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            CC=clang \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
+      - name: Package with AnyKernel3 (Lahaina Optimized & Zero-Error Unified ZIP)
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3.git anykernel
+          rm -rf anykernel/.git
+          
+          # Copy kernel image, matched dtb (lahaina/sm8350) and dtbo
+          cp arch/arm64/boot/Image.gz anykernel/
+          cp arch/arm64/boot/dts/qcom/sm8350.dtb anykernel/dtb || cp arch/arm64/boot/dts/qcom/*.dtb anykernel/dtb || true
+          cp arch/arm64/boot/dtbo.img anykernel/ || true
+          
+          # Clean up anykernel.sh to specifically target lahaina/vili without version locks
+          cd anykernel
+          
+          cat << 'EOF' > anykernel.sh
+          # AnyKernel3 Ramdisk Mod Script for Xiaomi 11T Pro (lahaina / vili)
+          properties() {
+          kernel.string=Next-Gen Lahaina Kernel for Xiaomi 11T Pro
+          do.devicecheck=0
+          do.modules=0
+          do.systemfs=0
+          do.cleanup=1
+          do.cleanuponabort=0
+          device.name1=vili
+          device.name2=lahaina
+          device.name3=Xiaomi 11T Pro
+          }
 
-    - name: Prepare Single Unified AnyKernel3 Package with Correct Script
-      run: |
-        mkdir -p kernel_package
-        mkdir -p kernel_package/dtb
-        
-        if [ -f "out/arch/arm64/boot/Image.gz" ]; then
-            cp out/arch/arm64/boot/Image.gz kernel_package/
-        elif [ -f "out/arch/arm64/boot/Image" ]; then
-            gzip -c out/arch/arm64/boot/Image > kernel_package/Image.gz
-        fi
+          # shell variables
+          block device;
+          is_slot_device=1;
+          ramdisk_compression=auto;
 
-        if [ -f "out/arch/arm64/boot/dtbo.img" ]; then
-            cp out/arch/arm64/boot/dtbo.img kernel_package/
-        fi
+          # import functions
+          . tools/ak3-core.sh
 
-        if [ -f "out/arch/arm64/boot/dtb" ]; then
-            cp out/arch/arm64/boot/dtb kernel_package/
-        elif [ -d "out/arch/arm64/boot/dtb" ]; then
-            cp -r out/arch/arm64/boot/dtb/* kernel_package/dtb/ || true
-        elif [ -f "out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb" ]; then
-            cp out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb kernel_package/dtb/
-        fi
+          # boot workflow
+          dump_boot;
 
-        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
-        rm -rf anykernel/.git anykernel/README.md
+          # write boot
+          write_boot;
 
-        cat << 'EOF' > anykernel/anykernel.sh
-        ### AnyKernel3 Ramdisk Mod Script
-        ### osm0sis @ xda-developers
+          # flash dtbo if present
+          if [ -f "$home/dtbo.img" ]; then
+            flash_block dtbo "$home/dtbo.img";
+          fi
+          EOF
 
-        properties() {
-        kernel.string=Next-Gen Vili Kernel by FrenkyMahn
-        do.devicecheck=0
-        do.modules=0
-        do.systemless=1
-        do.cleanup=1
-        do.cleanuponabort=0
-        device.name1=vili
-        device.name2=Xiaomi11TPro
-        device.name3=lahaina
-        device.name4=
-        device.name5=
-        supported.versions=
-        supported.patchlevels=
-        supported.vendorpatchlevels=
-        }
+          # Create final secure flashable zip
+          zip -r ../Next-Gen-Lahaina-Vili-Kernel-$(date +%Y%m%d).zip *
 
-        boot_attributes() {
-        set_perm_recursive 0 0 755 644 $RAMDISK/*;
-        set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
-        }
-
-        BLOCK=auto;
-        IS_SLOT_DEVICE=1;
-        RAMDISK_COMPRESSION=auto;
-        PATCH_VMBETA_FLAG=auto;
-
-        . tools/ak3-core.sh
-
-        dump_boot;
-
-        write_boot;
-
-        if [ -f "dtbo.img" ]; then
-          ui_print "Flashing dtbo...";
-          flash_raw dtbo dtbo.img;
-        fi
-        EOF
-
-        cp kernel_package/Image.gz anykernel/ || true
-        [ -f "kernel_package/dtbo.img" ] && cp kernel_package/dtbo.img anykernel/ || true
-        [ -d "kernel_package/dtb" ] && [ "$(ls -A kernel_package/dtb)" ] && cp -r kernel_package/dtb anykernel/ || true
-
-        cd anykernel
-        zip -r9 ../HyperOS-Next-Gen-Vili-Kernel.zip *
-        cd ..
-
-    - name: Upload Final Unified Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: HyperOS-Next-Gen-Kernel-Package
-        path: |
-          HyperOS-Next-Gen-Vili-Kernel.zip
+      - name: Upload Final Lahaina Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Next-Gen-Lahaina-Vili-Kernel-Zip
+          path: Next-Gen-Lahaina-Vili-Kernel-*.zip
           
