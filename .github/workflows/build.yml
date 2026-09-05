@@ -32,10 +32,11 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=aarch64-linux-gnu-gcc
           
-          # 1. Permanently remove problematic focaltech touchscreen folder causing Makefile separator errors
           rm -rf drivers/input/touchscreen/focaltech_3680 || true
+          if [ -f "drivers/input/touchscreen/Kconfig" ]; then
+            sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig || true
+          fi
           
-          # 2. Fix WALT trace header issues and missing enum definitions safely
           if [ -f "kernel/sched/walt/trace.c" ]; then
             sed -i 's|#include <trace.h>|#include "../trace.h"|g' kernel/sched/walt/trace.c || true
           fi
@@ -53,13 +54,11 @@ jobs:
           
           make vili_defconfig
           
-          # Set About Phone kernel name cleanly and bypass strict WERROR checks
           scripts/config --set-str CONFIG_LOCALVERSION "-Next-Gen"
           scripts/config --disable CONFIG_WERROR
           
           make olddefconfig
           
-          # Build kernel image and device trees cleanly
           make -j$(nproc)
           make dtbs
 
