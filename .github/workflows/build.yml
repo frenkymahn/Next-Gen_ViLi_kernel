@@ -23,7 +23,7 @@ jobs:
       - name: Setup Build Environment & Toolchain
         run: |
           sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zlib1g-dev libgmp-dev libmpc-dev libmpfr-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zlib1g-dev libgmp-dev libmpc-dev libmpfr-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu ncurses-dev libncurses5-dev
 
       - name: Configure, Merge OSS Lahaina/Vili DTB & Build Kernel
         run: |
@@ -34,7 +34,6 @@ jobs:
           
           make clean && make mrproper
           
-          # Merge official vili defconfig and lahaina/qcom device trees
           if [ -f "official_vili_kernel/arch/arm64/configs/vili_defconfig" ]; then
             cp official_vili_kernel/arch/arm64/configs/vili_defconfig arch/arm64/configs/vili_defconfig
           fi
@@ -51,7 +50,6 @@ jobs:
           
           make olddefconfig
           
-          # Build Image.gz, dtbs and dtbo safely using cross compiler
           make -j$(nproc)
           make dtbs
 
@@ -60,7 +58,6 @@ jobs:
           git clone https://github.com/osm0sis/AnyKernel3.git anykernel
           rm -rf anykernel/.git
           
-          # Copy kernel image, matched dtb (lahaina/sm8350) and dtbo
           cp arch/arm64/boot/Image.gz anykernel/
           cp arch/arm64/boot/dts/qcom/sm8350.dtb anykernel/dtb || cp arch/arm64/boot/dts/qcom/*.dtb anykernel/dtb || true
           cp arch/arm64/boot/dtbo.img anykernel/ || true
@@ -68,7 +65,6 @@ jobs:
           cd anykernel
           
           cat << 'EOF' > anykernel.sh
-          # AnyKernel3 Ramdisk Mod Script for Xiaomi 11T Pro (lahaina / vili)
           properties() {
           kernel.string=Next-Gen Lahaina Kernel for Xiaomi 11T Pro
           do.devicecheck=0
@@ -81,27 +77,20 @@ jobs:
           device.name3=Xiaomi 11T Pro
           }
 
-          # shell variables
           block device;
           is_slot_device=1;
           ramdisk_compression=auto;
 
-          # import functions
           . tools/ak3-core.sh
 
-          # boot workflow
           dump_boot;
-
-          # write boot
           write_boot;
 
-          # flash dtbo if present
           if [ -f "$home/dtbo.img" ]; then
             flash_block dtbo "$home/dtbo.img";
           fi
           EOF
 
-          # Create final secure flashable zip
           zip -r ../Next-Gen-Lahaina-Vili-Kernel-$(date +%Y%m%d).zip *
 
       - name: Upload Final Lahaina Kernel Artifact
