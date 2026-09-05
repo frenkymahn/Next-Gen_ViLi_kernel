@@ -23,9 +23,8 @@ jobs:
       - name: Setup Build Environment & Stable Clang Toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev wget xz-utils
+          sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev wget xz-utils gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
           
-          # Use stable and direct GitHub clone for Clang toolchain to prevent download errors
           mkdir -p toolchain/clang
           git clone --depth=1 https://github.com/kdrag0n/proton-clang.git toolchain/clang
 
@@ -35,7 +34,6 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export CC=clang
           
           rm -rf drivers/input/touchscreen/focaltech_3680 || true
           if [ -f "drivers/input/touchscreen/Kconfig" ]; then
@@ -64,8 +62,9 @@ jobs:
           
           make olddefconfig
           
-          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
-          make dtbs CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+          # Explicitly separate HOSTCC (system gcc) and target CC (clang) to fix fixdep linking errors
+          make -j$(nproc) CC=clang HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+          make dtbs CC=clang HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
 
       - name: Package with AnyKernel3 (Unified Flashable ZIP)
         run: |
