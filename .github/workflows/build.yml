@@ -30,17 +30,18 @@ jobs:
 
       - name: Fix All Kernel Errors Automatically
         run: |
-          # Define direct paths for toolchain without adding to global system PATH
           CLANG_PATH="$(pwd)/toolchain/clang/bin"
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
+          # Remove broken focaltech driver and clear references
           rm -rf drivers/input/touchscreen/focaltech_3680 || true
           if [ -f "drivers/input/touchscreen/Kconfig" ]; then
             sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig || true
           fi
           
+          # Fix WALT trace header issues
           if [ -f "kernel/sched/walt/trace.c" ]; then
             sed -i 's|#include <trace.h>|#include "../trace.h"|g' kernel/sched/walt/trace.c || true
           fi
@@ -63,7 +64,7 @@ jobs:
           
           make olddefconfig
           
-          # Build securely by explicitly passing CC and LD paths to prevent host linking errors
+          # Build securely with explicit HOSTCC and Clang parameters
           make -j$(nproc) CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
           make dtbs CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
 
