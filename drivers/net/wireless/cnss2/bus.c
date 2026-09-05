@@ -5,10 +5,10 @@
 #include "debug.h"
 #include "pci.h"
 
-enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
+enum cnss_dev_bus_type cnss_get_dev_bus_type(struct device *dev)
 {
+    struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
     int ret;
-    struct device *dev;
     u32 bus_type_val = CNSS_BUS_NONE;
 
     if (plat_priv->is_converged_dt) {
