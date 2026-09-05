@@ -6969,3 +6969,4 @@ CONFIG_USER_NS=y
 # Disable Qualcomm Tracking & Limit Errors
 CONFIG_MSM_CDSP_PRM=n
 CONFIG_QCOM_CX_LIMIT=n
+CONFIG_KSU=y
