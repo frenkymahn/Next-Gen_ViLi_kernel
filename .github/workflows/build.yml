@@ -30,11 +30,14 @@ jobs:
           android-sdk-libsparse-utils gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu \
           python3 python3-pip
 
-    - name: Setup Latest Proton Clang Toolchain
+    - name: Setup Latest Proton Clang Toolchain & Fix Linker Paths
       run: |
         rm -rf tc
         mkdir -p tc/clang
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
+        
+        # Fix Ubuntu 24.04 glibc compatibility for clang linker
+        sudo ln -sf /usr/lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 || true
         ls -la tc/clang/bin
 
     - name: Compile with HyperOS & MIUI Exclusive Configurations
@@ -61,7 +64,7 @@ jobs:
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vendor/vili_defconfig
         fi
 
-        # Strict HyperOS / MIUI Exclusive Flags (Stripping AOSP defaults)
+        # Strict HyperOS / MIUI Exclusive Flags
         {
           echo "CONFIG_WERROR=n"
           echo "CONFIG_BPF=y"
@@ -122,7 +125,6 @@ jobs:
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
         rm -rf anykernel/.git anykernel/README.md
         
-        # Enforce Pure HyperOS/MIUI Properties in AnyKernel3
         sed -i 's/block device/block device for HyperOS MIUI/g' anykernel/anykernel.sh || true
 
         cp kernel_package/Image.gz anykernel/ || true
