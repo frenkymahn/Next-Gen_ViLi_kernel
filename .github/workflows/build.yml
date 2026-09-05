@@ -1,4 +1,4 @@
-name: Build Xiaomi 11T Pro Kernel (MIUI & HyperOS Only)
+name: Build Xiaomi 11T Pro Kernel (HyperOS & MIUI Exclusive)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout Repository Cleanly
@@ -37,7 +37,7 @@ jobs:
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
         ls -la tc/clang/bin
 
-    - name: Compile with MIUI & HyperOS Exclusive Configurations
+    - name: Compile with HyperOS & MIUI Exclusive Configurations
       run: |
         export PATH="$(pwd)/tc/clang/bin:$PATH"
         export ARCH=arm64
@@ -50,16 +50,18 @@ jobs:
 
         mkdir -p out
         
-        # Check and use the correct defconfig available in the new source tree
+        # Defconfig Detection for vili
         if [ -f "arch/arm64/configs/vili_defconfig" ]; then
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
         elif [ -f "arch/arm64/configs/xiaomi_vili_defconfig" ]; then
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- xiaomi_vili_defconfig
+        elif [ -f "arch/arm64/configs/kangaroox-vili_defconfig" ]; then
+          make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kangaroox-vili_defconfig
         else
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vendor/vili_defconfig
         fi
 
-        # MIUI & HyperOS Exclusive Vendor Flags (Pure HyperOS/MIUI Compatibility)
+        # Strict HyperOS / MIUI Exclusive Flags (Stripping AOSP defaults)
         {
           echo "CONFIG_WERROR=n"
           echo "CONFIG_BPF=y"
@@ -73,7 +75,10 @@ jobs:
           echo "CONFIG_MEMCG=y"
           echo "CONFIG_IKCONFIG=y"
           echo "CONFIG_IKCONFIG_PROC=y"
-          echo "CONFIG_LOCALVERSION=\"-HyperOS-Vili-FrenkyMahn\""
+          echo "CONFIG_TUN=y"
+          echo "CONFIG_NF_NAT=y"
+          echo "CONFIG_NF_CONNTRACK=y"
+          echo "CONFIG_LOCALVERSION=\"-HyperOS-Exclusive-FrenkyMahn\""
         } >> out/.config
 
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
@@ -94,7 +99,7 @@ jobs:
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip
 
-    - name: Prepare Flashable Zip and Images
+    - name: Prepare HyperOS Exclusive AnyKernel3 Package
       run: |
         mkdir -p kernel_package
         mkdir -p kernel_package/dtb
@@ -117,6 +122,9 @@ jobs:
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
         rm -rf anykernel/.git anykernel/README.md
         
+        # Enforce Pure HyperOS/MIUI Properties in AnyKernel3
+        sed -i 's/block device/block device for HyperOS MIUI/g' anykernel/anykernel.sh || true
+
         cp kernel_package/Image.gz anykernel/ || true
         cp kernel_package/dtbo.img anykernel/ || true
         cp -r kernel_package/dtb anykernel/ || true
