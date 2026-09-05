@@ -30,15 +30,19 @@ jobs:
           android-sdk-libsparse-utils gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu \
           python3 python3-pip
 
-    - name: Setup Latest Proton Clang Toolchain & Fix Linker Paths
+    - name: Setup Toolchain and Fix Dynamic Linker Error
       run: |
         rm -rf tc
         mkdir -p tc/clang
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
         
-        # Fix Ubuntu 24.04 glibc compatibility for clang linker
+        # Create compatibility symlinks for Ubuntu 24.04 glibc loader
+        sudo mkdir -p /lib64
         sudo ln -sf /usr/lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 || true
-        ls -la tc/clang/bin
+        sudo ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 || true
+        
+        # Export LD_LIBRARY_PATH for host tools inside clang
+        export LD_LIBRARY_PATH="$(pwd)/tc/clang/lib:$LD_LIBRARY_PATH"
 
     - name: Compile with HyperOS & MIUI Exclusive Configurations
       run: |
@@ -53,7 +57,6 @@ jobs:
 
         mkdir -p out
         
-        # Defconfig Detection for vili
         if [ -f "arch/arm64/configs/vili_defconfig" ]; then
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
         elif [ -f "arch/arm64/configs/xiaomi_vili_defconfig" ]; then
@@ -64,7 +67,6 @@ jobs:
           make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vendor/vili_defconfig
         fi
 
-        # Strict HyperOS / MIUI Exclusive Flags
         {
           echo "CONFIG_WERROR=n"
           echo "CONFIG_BPF=y"
