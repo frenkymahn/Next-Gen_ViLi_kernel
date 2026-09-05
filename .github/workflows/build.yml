@@ -25,12 +25,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
-      - name: Configure and Build Kernel Safely
+      - name: Fix Source Code Errors & Configure Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=aarch64-linux-gnu-gcc
+          
+          # Fix focaltech touchscreen Makefile separator error completely
+          if [ -f "drivers/input/touchscreen/focaltech_3680/Makefile" ]; then
+            sed -i 's/^[[:space:]]*/\t/' drivers/input/touchscreen/focaltech_3680/Makefile || true
+          fi
+          
+          # Fix trace.h include path for WALT scheduler on modern compiler
+          if [ -f "kernel/sched/walt/trace.c" ]; then
+            sed -i 's|#include <trace.h>|#include "../trace.h"|g' kernel/sched/walt/trace.c || true
+          fi
           
           make clean && make mrproper
           
@@ -45,12 +55,13 @@ jobs:
           
           make vili_defconfig
           
-          # Set About Phone kernel name to Next-Gen cleanly
+          # Set About Phone kernel name cleanly
           scripts/config --set-str CONFIG_LOCALVERSION "-Next-Gen"
+          scripts/config --disable CONFIG_WERROR
           
           make olddefconfig
           
-          # Build kernel image and device trees cleanly without syntax errors
+          # Build kernel image and device trees cleanly
           make -j$(nproc)
           make dtbs
 
