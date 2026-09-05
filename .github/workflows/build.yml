@@ -43,7 +43,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         export KBUILD_BUILD_USER="FrenkyMahn"
-        export KBUILD_BUILD_HOST="Next-Gen"
+        export KBUILD_BUILD_HOST="HyperOS-Server"
         export CLANG_TRIPLE=aarch64-linux-gnu-
         export CROSS_COMPILE=aarch64-linux-gnu-
         export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
@@ -70,57 +70,50 @@ jobs:
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip
 
-    - name: Prepare AnyKernel3 Package
+    - name: Prepare Single Unified AnyKernel3 Package
       run: |
         mkdir -p kernel_package
         mkdir -p kernel_package/dtb
         
+        # 1. Kernel Image (Image.gz)
         if [ -f "out/arch/arm64/boot/Image.gz" ]; then
             cp out/arch/arm64/boot/Image.gz kernel_package/
         elif [ -f "out/arch/arm64/boot/Image" ]; then
             gzip -c out/arch/arm64/boot/Image > kernel_package/Image.gz
         fi
 
-        cp out/arch/arm64/boot/dtbo.img kernel_package/ || true
-        cp out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb kernel_package/dtb/ || cp out/arch/arm64/boot/dts/qcom/*.dtb kernel_package/dtb/ || true
-        
-        if [ -f "out/arch/arm64/boot/boot.img" ]; then
-            cp out/arch/arm64/boot/boot.img kernel_package/
-        else
-            touch kernel_package/boot.img
+        # 2. Device Tree Overlay (dtbo.img)
+        if [ -f "out/arch/arm64/boot/dtbo.img" ]; then
+            cp out/arch/arm64/boot/dtbo.img kernel_package/
         fi
 
-        if [ -f "out/arch/arm64/boot/vendor_boot.img" ]; then
-            cp out/arch/arm64/boot/vendor_boot.img kernel_package/
-        else
-            touch kernel_package/vendor_boot.img
+        # 3. Device Tree Blob (dtb) collection
+        if [ -f "out/arch/arm64/boot/dtb" ]; then
+            cp out/arch/arm64/boot/dtb kernel_package/
+        elif [ -d "out/arch/arm64/boot/dtb" ]; then
+            cp -r out/arch/arm64/boot/dtb/* kernel_package/dtb/ || true
+        elif [ -f "out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb" ]; then
+            cp out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb kernel_package/dtb/
         fi
 
+        # Setup AnyKernel3 and merge everything into ONE single zip
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
         rm -rf anykernel/.git anykernel/README.md
         
-        # Copy everything directly into the AnyKernel3 package folder
+        # Copy everything cleanly inside the AnyKernel3 root folder
         cp kernel_package/Image.gz anykernel/ || true
-        cp kernel_package/dtbo.img anykernel/ || true
-        cp -r kernel_package/dtb anykernel/ || true
-        cp kernel_package/boot.img anykernel/ || true
-        cp kernel_package/vendor_boot.img anykernel/ || true
+        [ -f "kernel_package/dtbo.img" ] && cp kernel_package/dtbo.img anykernel/ || true
+        [ -d "kernel_package/dtb" ] && [ "$(ls -A kernel_package/dtb)" ] && cp -r kernel_package/dtb anykernel/ || true
 
+        # Create single flashable zip
         cd anykernel
         zip -r9 ../HyperOS-Next-Gen-Vili-Kernel.zip *
         cd ..
 
-        cp -r kernel_package/* out/ || true
-
-    - name: Upload Final Artifacts
+    - name: Upload Final Unified Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: HyperOS-Next-Gen-Kernel-Package
         path: |
           HyperOS-Next-Gen-Vili-Kernel.zip
-          out/Image.gz
-          out/boot.img
-          out/vendor_boot.img
-          out/dtb
-          out/dtbo.img
           
