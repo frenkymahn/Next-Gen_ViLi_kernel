@@ -1,4 +1,4 @@
-name: Build Next-Gen Lahaina Vili HyperOS Universal Kernel (Android 14-17 Pro)
+name: Build Next-Gen Lahaina Vili HyperOS Universal Kernel
 
 on:
   workflow_dispatch:
@@ -25,15 +25,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
-      - name: Fix Source Code, Apply Advanced Android 15-17 & HyperOS Flags
+      - name: Configure and Build Kernel Safely
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=aarch64-linux-gnu-gcc
-          
-          # Fix potential makefile syntax errors across source
-          find . -name "Makefile" -exec sed -i 's/^[[:space:]]*//' {} + || true
           
           make clean && make mrproper
           
@@ -48,33 +45,16 @@ jobs:
           
           make vili_defconfig
           
-          # Force set About Phone kernel name to Next-Gen
+          # Set About Phone kernel name to Next-Gen cleanly
           scripts/config --set-str CONFIG_LOCALVERSION "-Next-Gen"
-          
-          # Inject robust flags for Android 15, 16, 17 & HyperOS 1-4 compatibility
-          scripts/config --enable CONFIG_KPROBES
-          scripts/config --enable CONFIG_HAVE_KPROBES
-          scripts/config --enable CONFIG_KPROBE_EVENTS
-          scripts/config --enable CONFIG_BPF
-          scripts/config --enable CONFIG_BPF_SYSCALL
-          scripts/config --enable CONFIG_NET_CLS_BPF
-          scripts/config --enable CONFIG_NET_ACT_BPF
-          scripts/config --enable CONFIG_BPF_JIT
-          scripts/config --enable CONFIG_HAVE_EBPF_JIT
-          scripts/config --enable CONFIG_TMPFS_XATTR
-          scripts/config --enable CONFIG_TMPFS_POSIX_ACL
-          scripts/config --enable CONFIG_ANDROID_BINDER_IPC
-          scripts/config --enable CONFIG_ANDROID_BINDERFS
-          scripts/config --enable CONFIG_FS_ENCRYPTION
-          scripts/config --enable CONFIG_FS_ENCRYPTION_ALGS
           
           make olddefconfig
           
-          # Build kernel image and device trees professionally
+          # Build kernel image and device trees cleanly without syntax errors
           make -j$(nproc)
           make dtbs
 
-      - name: Package with AnyKernel3 (Multi-SDK Unified & Zero-Error Flash)
+      - name: Package with AnyKernel3 (Unified Flashable ZIP)
         run: |
           git clone https://github.com/osm0sis/AnyKernel3.git anykernel
           rm -rf anykernel/.git
@@ -87,7 +67,7 @@ jobs:
           
           cat << 'EOF' > anykernel.sh
           properties() {
-          kernel.string=Next-Gen Lahaina Universal Kernel (Android 14-17)
+          kernel.string=Next-Gen Lahaina Universal Kernel
           do.devicecheck=0
           do.modules=0
           do.systemfs=0
@@ -112,11 +92,11 @@ jobs:
           fi
           EOF
 
-          zip -r ../Next-Gen-Lahaina-Android14-17-Kernel-$(date +%Y%m%d).zip *
+          zip -r ../Next-Gen-Lahaina-Kernel-$(date +%Y%m%d).zip *
 
-      - name: Upload Final Professional Kernel Artifact
+      - name: Upload Final Clean Kernel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Next-Gen-Lahaina-Android14-17-Kernel-Zip
-          path: Next-Gen-Lahaina-Android14-17-Kernel-*.zip
+          name: Next-Gen-Lahaina-Kernel-Zip
+          path: Next-Gen-Lahaina-Kernel-*.zip
           
