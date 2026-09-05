@@ -3189,7 +3189,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 	plat_priv->device_id = device_id->driver_data;
 	plat_priv->is_converged_dt = cnss_is_converged_dt(plat_priv);
 	plat_priv->dev_node = plat_priv->plat_dev->dev.of_node;
-	plat_priv->bus_type = cnss_get_bus_type(plat_priv);
+	plat_priv->bus_type = CNSS_BUS_PCI;
 	plat_priv->use_nv_mac = cnss_use_nv_mac(plat_priv);
 	plat_priv->use_fw_path_with_prefix =
 		cnss_use_fw_path_with_prefix(plat_priv);
