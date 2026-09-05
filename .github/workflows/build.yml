@@ -1,107 +1,135 @@
-name: Build Official Vili HyperOS Kernel (Ubuntu 24.04 Unified)
+name: Build Xiaomi 11T Pro Kernel (Universal HyperOS & Android Next-Gen)
+
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
+    
     steps:
-      - name: Checkout Code Tree
-        uses: actions/checkout@v4
+    - name: Checkout Repository Cleanly
+      uses: actions/checkout@v4
+      with:
+        repository: frenkymahn/Next-Gen_ViLi_kernel
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 1
+        submodules: recursive
 
-      - name: System Dependencies Setup (Ubuntu 24.04 Cleaned)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32z1-dev liblz4-tool libncurses6 libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev clang lld llvm libcap-dev python3 libelf-dev binutils-aarch64-linux-gnu wget tar
-          
-          # UBUNTU 24.04 HOTFIX: Map legacy terminal linker layers
-          sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.6 /lib/x86_64-linux-gnu/libtinfo.so.5
-          sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.6 /lib/x86_64-linux-gnu/libncurses.so.5
+    - name: Setup Build Environment and Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          bc bison build-essential ccache curl flex \
+          git gnupg gperf imagemagick \
+          libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
+          libssl-dev libxml2 libxml2-utils lzop pngcrush rsync \
+          schedtool squashfs-tools xsltproc yasm zip zlib1g-dev \
+          android-sdk-libsparse-utils gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu \
+          python3 python3-pip
 
-      - name: Pull Target Source Components
-        run: |
-          # FIXED: Use explicit branch flag '-b vili-r-oss' to bypass 'main' checkout failure
-          git clone --depth=1 https://github.com -b vili-r-oss kernel-source
-          
-          # FIXED: Download and extract toolchain in a single workspace layer
-          mkdir -p clang
-          cd clang
-          wget -q https://gitlab.com
-          tar -xf clang-r416183b.tar.gz && rm -f clang-r416183b.tar.gz
-          cd ..
-          
-          git clone --depth=1 https://github.com AnyKernel3
+    - name: Setup Latest Proton Clang Toolchain
+      run: |
+        rm -rf tc
+        mkdir -p tc/clang
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
+        ls -la tc/clang/bin
 
-      - name: Inject Defconfig Custom Tuning (Bypass Logo Freeze & vDSO Error)
-        run: |
-          cd kernel-source/arch/arm64/configs/
-          
-          # Appending critical HyperOS compatibility and bootloop fixes
-          echo "CONFIG_BOARD_USES_VENDOR_BOOT=y" >> vili_defconfig
-          echo "CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE=n" >> vili_defconfig
-          
-          # FIXED: Disable broken vDSO block causing 'x24 register' error
-          echo "CONFIG_VDSO=n" >> vili_defconfig
-          echo "CONFIG_COMPAT_VDSO=n" >> vili_defconfig
-          
-          # Pass Android 16/17 network security requirements
-          echo "CONFIG_BPF=y" >> vili_defconfig
-          echo "CONFIG_BPF_SYSCALL=y" >> vili_defconfig
-          echo "CONFIG_CGROUP_BPF=y" >> vili_defconfig
-          echo "CONFIG_NET_ACT_BPF=y" >> vili_defconfig
-          
-          # Allow permissive boot for ported ROMs
-          echo "CONFIG_ALWAYS_PERMISSIVE=y" >> vili_defconfig
-          echo "CONFIG_DM_VERITY=n" >> vili_defconfig
+    - name: Compile with Universal HyperOS and Android Flags
+      run: |
+        export PATH="$(pwd)/tc/clang/bin:$PATH"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export KBUILD_BUILD_USER="FrenkyMahn"
+        export KBUILD_BUILD_HOST="Next-Gen-Server"
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Patch Stack Pointer for Clang Compatibility
-        run: |
-          cd kernel-source/arch/arm64/include/asm
-          # Rewrites stack_pointer.h to fix the 'sp' unsuitable register error
-          cat << 'EOF' > stack_pointer.h
-          #ifndef __ASM_STACK_POINTER_H
-          #define __ASM_STACK_POINTER_H
-          static inline unsigned long __current_stack_pointer(void) {
-              unsigned long sp;
-              __asm__ ("mov %0, sp" : "=r" (sp));
-              return sp;
-          }
-          #define current_stack_pointer (__current_stack_pointer())
-          #endif
-          EOF
+        mkdir -p out
+        make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kangaroox-vili_defconfig
 
-      - name: Execute Main Source Build Process
-        run: |
-          cd kernel-source
-          export PATH="$(pwd)/../clang/bin:$PATH"
-          export ARCH=arm64
-          export SUBARCH=arm64
-          
-          # Initialize the build using the 'out' directory
-          make O=out vili_defconfig
-          
-          # Suppress warning-errors to ensure completion
-          make -j$(nproc --all) O=out \
-            CC=clang \
+        # Universal Compatibility Flags for BPF, PSI, and Binder IPC
+        {
+          echo "CONFIG_WERROR=n"
+          echo "CONFIG_BPF=y"
+          echo "CONFIG_BPF_SYSCALL=y"
+          echo "CONFIG_NET_CLS_ACT=y"
+          echo "CONFIG_NET_SCH_INGRESS=y"
+          echo "CONFIG_TMPFS_XATTR=y"
+          echo "CONFIG_ANDROID_BINDER_IPC=y"
+          echo "CONFIG_ANDROID_BINDERFS=y"
+          echo "CONFIG_PSI=y"
+          echo "CONFIG_MEMCG=y"
+          echo "CONFIG_IKCONFIG=y"
+          echo "CONFIG_IKCONFIG_PROC=y"
+        } >> out/.config
+
+        make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+
+        make -j$(nproc --all) O=out \
+            PYTHON=python3 \
+            KCFLAGS="-w" \
+            LOCALVERSION="-Universal-HyperOS-FrenkyMahn" \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            ARCH=arm64 \
+            SUBARCH=arm64 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            LD=ld.lld \
-            KBUILD_CFLAGS="-Wno-error=inline-asm -Wno-error=register -Wno-error=unused-command-line-argument"
-          
-          make -j$(nproc --all) O=out INSTALL_MOD_PATH=../modules_out modules_install
+            CC=clang \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip
 
-      - name: Assemble Final Archive Zip File
-        run: |
-          cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
-          cp kernel-source/out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
-          mkdir -p AnyKernel3/vendor_ramdisk/modules
-          find modules_out/ -name "*.ko" -exec cp {} AnyKernel3/vendor_ramdisk/modules/ \;
-          cd AnyKernel3
-          zip -r9 ../Next-Gen-Vili-Fixed.zip * -x .git\* README.md
+    - name: Prepare Flashable Zip and Images
+      run: |
+        mkdir -p kernel_package
+        mkdir -p kernel_package/dtb
+        cp out/arch/arm64/boot/Image.gz kernel_package/ || true
+        cp out/arch/arm64/boot/dtbo.img kernel_package/ || true
+        cp out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb kernel_package/dtb/ || cp out/arch/arm64/boot/dts/qcom/*.dtb kernel_package/dtb/ || true
+        
+        if [ -f "out/arch/arm64/boot/boot.img" ]; then
+            cp out/arch/arm64/boot/boot.img kernel_package/
+        else
+            touch kernel_package/boot.img
+        fi
 
-      - name: Upload Recovery Flashable ZIP Package
-        uses: actions/upload-artifact@v4
-        with:
-          name: HyperOS-Kernel-Vili
-          path: Next-Gen-Vili-Fixed.zip
+        if [ -f "out/arch/arm64/boot/vendor_boot.img" ]; then
+            cp out/arch/arm64/boot/vendor_boot.img kernel_package/
+        else
+            touch kernel_package/vendor_boot.img
+        fi
+
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
+        rm -rf anykernel/.git anykernel/README.md
+        
+        cp kernel_package/Image.gz anykernel/ || true
+        cp kernel_package/dtbo.img anykernel/ || true
+        cp -r kernel_package/dtb anykernel/ || true
+        cp kernel_package/boot.img anykernel/ || true
+        cp kernel_package/vendor_boot.img anykernel/ || true
+
+        cd anykernel
+        zip -r9 ../Universal-HyperOS-Kernel-FrenkyMahn.zip *
+        cd ..
+
+        cp -r kernel_package/* out/ || true
+
+    - name: Upload Final Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Universal-HyperOS-Kernel-Package
+        path: |
+          Universal-HyperOS-Kernel-FrenkyMahn.zip
+          out/Image.gz
+          out/boot.img
+          out/vendor_boot.img
+          out/dtb
+          out/dtbo.img
           
