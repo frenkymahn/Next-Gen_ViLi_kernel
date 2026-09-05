@@ -26,14 +26,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Build Kernel, DTB, DTBO and Vendor_Boot
+      - name: Build Kernel Step-by-Step
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          export HOSTCC=gcc
-          export HOSTCXX=g++
           
           # Clean source to prevent old object errors
           make clean && make mrproper
@@ -41,8 +39,10 @@ jobs:
           # Load vili defconfig for HyperOS / MIUI
           make O=out vili_defconfig
           
-          # Compile explicitly setting HOSTCC to bypass Error 2
-          make O=out -j4 HOSTCC=gcc HOSTCXX=g++ CC=gcc
+          # Compile step-by-step to bypass sub-make errors
+          make O=out -j4 Image.gz
+          make O=out -j4 dtbs
+          make O=out -j4 dtbo.img
 
       - name: Package Output Artifacts
         uses: actions/upload-artifact@v4
@@ -52,5 +52,4 @@ jobs:
             out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dtb
             out/arch/arm64/boot/dtbo.img
-            out/arch/arm64/boot/vendor_boot.img
             
