@@ -1,4 +1,4 @@
-name: Build Xiaomi 11T Pro Kernel (Universal HyperOS & Android Next-Gen)
+name: Build Xiaomi 11T Pro Kernel (Universal MIUI & HyperOS 1-4)
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
         ls -la tc/clang/bin
 
-    - name: Compile with Universal HyperOS and Android Flags
+    - name: Compile with Full MIUI & HyperOS Compatibility Flags
       run: |
         export PATH="$(pwd)/tc/clang/bin:$PATH"
         export ARCH=arm64
@@ -51,7 +51,7 @@ jobs:
         mkdir -p out
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kangaroox-vili_defconfig
 
-        # Universal Compatibility Flags for BPF, PSI, and Binder IPC
+        # Full MIUI/HyperOS Universal Compatibility and Hook Flags
         {
           echo "CONFIG_WERROR=n"
           echo "CONFIG_BPF=y"
@@ -65,6 +65,9 @@ jobs:
           echo "CONFIG_MEMCG=y"
           echo "CONFIG_IKCONFIG=y"
           echo "CONFIG_IKCONFIG_PROC=y"
+          echo "CONFIG_TUN=y"
+          echo "CONFIG_NF_NAT=y"
+          echo "CONFIG_NF_CONNTRACK=y"
         } >> out/.config
 
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
@@ -72,7 +75,7 @@ jobs:
         make -j$(nproc --all) O=out \
             PYTHON=python3 \
             KCFLAGS="-w" \
-            LOCALVERSION="-Universal-HyperOS-FrenkyMahn" \
+            LOCALVERSION="-HyperOS-Universal-FrenkyMahn" \
             LLVM=1 \
             LLVM_IAS=1 \
             ARCH=arm64 \
@@ -116,7 +119,7 @@ jobs:
         cp kernel_package/vendor_boot.img anykernel/ || true
 
         cd anykernel
-        zip -r9 ../Universal-HyperOS-Kernel-FrenkyMahn.zip *
+        zip -r9 ../HyperOS-Universal-Kernel-FrenkyMahn.zip *
         cd ..
 
         cp -r kernel_package/* out/ || true
@@ -124,9 +127,9 @@ jobs:
     - name: Upload Final Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Universal-HyperOS-Kernel-Package
+        name: HyperOS-Universal-Kernel-Package
         path: |
-          Universal-HyperOS-Kernel-FrenkyMahn.zip
+          HyperOS-Universal-Kernel-FrenkyMahn.zip
           out/Image.gz
           out/boot.img
           out/vendor_boot.img
