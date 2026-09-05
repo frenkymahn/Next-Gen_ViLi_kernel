@@ -24,7 +24,7 @@ jobs:
       - name: Setup Environment & Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev clang lld llvm
+          sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev clang lld llvm gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Build Kernel, DTB, DTBO and Vendor_Boot
         run: |
@@ -37,7 +37,7 @@ jobs:
           # Load vili defconfig for HyperOS / MIUI
           make O=out vili_defconfig
           
-          # Compile Kernel with safe -j4 core count to prevent Exit Code 2
+          # Compile Kernel with safe -j4 core count
           make O=out -j4 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Package Output Artifacts
