@@ -37,7 +37,7 @@ jobs:
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
         ls -la tc/clang/bin
 
-    - name: Compile with HyperOS & MIUI Exclusive Configurations
+    - name: Compile Kernel
       run: |
         export PATH="$(pwd)/tc/clang/bin:$PATH"
         export ARCH=arm64
@@ -50,37 +50,8 @@ jobs:
 
         mkdir -p out
         
-        # Defconfig Detection for vili
-        if [ -f "arch/arm64/configs/vili_defconfig" ]; then
-          make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
-        elif [ -f "arch/arm64/configs/xiaomi_vili_defconfig" ]; then
-          make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- xiaomi_vili_defconfig
-        elif [ -f "arch/arm64/configs/kangaroox-vili_defconfig" ]; then
-          make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- kangaroox-vili_defconfig
-        else
-          make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vendor/vili_defconfig
-        fi
-
-        # Strict HyperOS / MIUI Exclusive Flags
-        {
-          echo "CONFIG_WERROR=n"
-          echo "CONFIG_BPF=y"
-          echo "CONFIG_BPF_SYSCALL=y"
-          echo "CONFIG_NET_CLS_ACT=y"
-          echo "CONFIG_NET_SCH_INGRESS=y"
-          echo "CONFIG_TMPFS_XATTR=y"
-          echo "CONFIG_ANDROID_BINDER_IPC=y"
-          echo "CONFIG_ANDROID_BINDERFS=y"
-          echo "CONFIG_PSI=y"
-          echo "CONFIG_MEMCG=y"
-          echo "CONFIG_IKCONFIG=y"
-          echo "CONFIG_IKCONFIG_PROC=y"
-          echo "CONFIG_TUN=y"
-          echo "CONFIG_NF_NAT=y"
-          echo "CONFIG_NF_CONNTRACK=y"
-          echo "CONFIG_LOCALVERSION=\"-HyperOS-Exclusive-FrenkyMahn\""
-        } >> out/.config
-
+        # Using source-defined configurations directly
+        make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
 
         make -j$(nproc --all) O=out \
@@ -99,11 +70,17 @@ jobs:
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip
 
-    - name: Prepare HyperOS Exclusive AnyKernel3 Package
+    - name: Prepare AnyKernel3 Package
       run: |
         mkdir -p kernel_package
         mkdir -p kernel_package/dtb
-        cp out/arch/arm64/boot/Image.gz kernel_package/ || true
+        
+        if [ -f "out/arch/arm64/boot/Image.gz" ]; then
+            cp out/arch/arm64/boot/Image.gz kernel_package/
+        elif [ -f "out/arch/arm64/boot/Image" ]; then
+            gzip -c out/arch/arm64/boot/Image > kernel_package/Image.gz
+        fi
+
         cp out/arch/arm64/boot/dtbo.img kernel_package/ || true
         cp out/arch/arm64/boot/dts/qcom/sm8350-v2.1.dtb kernel_package/dtb/ || cp out/arch/arm64/boot/dts/qcom/*.dtb kernel_package/dtb/ || true
         
@@ -122,8 +99,6 @@ jobs:
         git clone --depth=1 https://github.com/osm0sis/AnyKernel3 -b master anykernel
         rm -rf anykernel/.git anykernel/README.md
         
-        sed -i 's/block device/block device for HyperOS MIUI/g' anykernel/anykernel.sh || true
-
         cp kernel_package/Image.gz anykernel/ || true
         cp kernel_package/dtbo.img anykernel/ || true
         cp -r kernel_package/dtb anykernel/ || true
@@ -139,7 +114,7 @@ jobs:
     - name: Upload Final Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: HyperOS-Exclusive-Kernel-Package
+        name: Next-Gen-Exclusive-Kernel-Package
         path: |
           HyperOS-Exclusive-Vili-Kernel.zip
           out/Image.gz
