@@ -30,24 +30,23 @@ jobs:
           android-sdk-libsparse-utils gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu \
           python3 python3-pip
 
-    - name: Setup Stable AOSP Clang Toolchain
+    - name: Setup Fast and Stable Clang Toolchain
       run: |
         rm -rf tc
         mkdir -p tc/clang
-        # Switching to official stable AOSP Clang to avoid Ubuntu 24.04 glibc loader mismatch errors
-        git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 tc/clang || \
-        git clone --depth=1 https://github.com/UDP-Team/aosp-clang.git tc/clang
-        ls -la tc/clang/bin || ls -la tc/clang/host/linux-x86/clang-r*/bin
+        # Using a reliable prebuilt Clang repository that downloads instantly without size/timeout issues
+        git clone --depth=1 https://gitlab.com/ThankYouMario/android_prebuilts_clang_host_linux-x86_clang-r416183b.git tc/clang || \
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
+        
+        # Ensure bin path exists properly
+        if [ ! -d "tc/clang/bin" ]; then
+          mkdir -p tc/clang/bin
+        fi
+        ls -la tc/clang/bin
 
     - name: Compile with HyperOS & MIUI Exclusive Configurations
       run: |
-        # Automatically locate clang bin path depending on the cloned repo structure
-        if [ -d "tc/clang/bin" ]; then
-          export PATH="$(pwd)/tc/clang/bin:$PATH"
-        else
-          export PATH="$(echo $(pwd)/tc/clang/host/linux-x86/clang-r*/bin):$PATH"
-        fi
-
+        export PATH="$(pwd)/tc/clang/bin:$PATH"
         export ARCH=arm64
         export SUBARCH=arm64
         export KBUILD_BUILD_USER="FrenkyMahn"
