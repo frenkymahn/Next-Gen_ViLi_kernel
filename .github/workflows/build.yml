@@ -37,7 +37,7 @@ jobs:
         git clone --depth=1 https://github.com/kdrag0n/proton-clang.git tc/clang
         ls -la tc/clang/bin
 
-    - name: Compile Kernel with Clean State
+    - name: Compile Kernel
       run: |
         export PATH="$(pwd)/tc/clang/bin:$PATH"
         export ARCH=arm64
@@ -49,9 +49,6 @@ jobs:
         export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
         mkdir -p out
-
-        make O=out clean
-        make O=out mrproper
 
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- vili_defconfig
         make O=out ARCH=arm64 SUBARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
@@ -155,5 +152,4 @@ jobs:
         name: HyperOS-Next-Gen-Kernel-Package
         path: |
           HyperOS-Next-Gen-Vili-Kernel.zip
-
-
+          
