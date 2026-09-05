@@ -20,17 +20,14 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s v3.0.0
 
-      - name: Setup Build Environment & Clang Toolchain
+      - name: Setup Build Environment & Stable Clang Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev wget xz-utils
           
-          # Clone official Android Clang toolchain for error-free compilation
+          # Use stable and direct GitHub clone for Clang toolchain to prevent download errors
           mkdir -p toolchain/clang
-          cd toolchain/clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android14-release/clang-r510928.tar.gz -O clang.tar.gz || wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android13-release/clang-r450784_d.tar.gz -O clang.tar.gz
-          tar -xzf clang.tar.gz
-          cd ../..
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git toolchain/clang
 
       - name: Fix All Kernel Errors Automatically
         run: |
@@ -67,7 +64,6 @@ jobs:
           
           make olddefconfig
           
-          # Build with Clang toolchain
           make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
           make dtbs CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
 
