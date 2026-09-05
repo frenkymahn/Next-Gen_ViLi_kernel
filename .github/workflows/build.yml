@@ -17,26 +17,24 @@ jobs:
         with:
           branch: ${{ github.event.inputs.branch }}
 
+      - name: Setup KernelSU Next
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+
       - name: Setup Environment & Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev
-
-      - name: Setup Clang Toolchain
-        uses: stanley-zhong/setup-clang@v1
-        with:
-          version: 'latest'
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev clang lld llvm
 
       - name: Build Kernel, DTB, DTBO and Vendor_Boot
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
-          export PATH="/usr/lib/llvm/bin:$PATH"
           
           # Clean source to prevent old object errors
           make clean && make mrproper
           
-          # Load vili defconfig
+          # Load vili defconfig for HyperOS / MIUI
           make O=out vili_defconfig
           
           # Compile Kernel with safe -j4 core count to prevent Exit Code 2
@@ -45,10 +43,11 @@ jobs:
       - name: Package Output Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vili-next-gen-kernel-artifacts
+          name: vili-hyperos-kernelsu-artifacts
           path: |
             out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dtb
             out/arch/arm64/boot/dtbo.img
             out/arch/arm64/boot/vendor_boot.img
-            
+
+   
