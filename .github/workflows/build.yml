@@ -30,7 +30,8 @@ jobs:
 
       - name: Fix All Kernel Errors Automatically
         run: |
-          export PATH="$(pwd)/toolchain/clang/bin:$PATH"
+          # Define direct paths for toolchain without adding to global system PATH
+          CLANG_PATH="$(pwd)/toolchain/clang/bin"
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -62,9 +63,9 @@ jobs:
           
           make olddefconfig
           
-          # Explicitly separate HOSTCC (system gcc) and target CC (clang) to fix fixdep linking errors
-          make -j$(nproc) CC=clang HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
-          make dtbs CC=clang HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+          # Build securely by explicitly passing CC and LD paths to prevent host linking errors
+          make -j$(nproc) CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
+          make dtbs CC=$CLANG_PATH/clang LD=$CLANG_PATH/ld.lld HOSTCC=gcc HOSTCXX=g++ CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
 
       - name: Package with AnyKernel3 (Unified Flashable ZIP)
         run: |
