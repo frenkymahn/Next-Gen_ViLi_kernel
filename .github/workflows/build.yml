@@ -25,12 +25,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libssl-dev zlib1g-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
-      - name: Configure, Merge OSS Lahaina/Vili DTB & Build Kernel
+      - name: Fix Source Code Errors & Configure Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=aarch64-linux-gnu-gcc
+          
+          # Fix potential missing separator in focaltech makefile if exists
+          if [ -f "drivers/input/touchscreen/focaltech_3680/Makefile" ]; then
+            sed -i 's/^[[:space:]]*//' drivers/input/touchscreen/focaltech_3680/Makefile || true
+          fi
           
           make clean && make mrproper
           
