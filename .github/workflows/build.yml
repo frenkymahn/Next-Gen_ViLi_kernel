@@ -20,20 +20,18 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s v3.0.0
 
-      - name: Setup Build Environment
+      - name: Setup Build Environment & Toolchain
         run: |
           sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zlib1g-dev libgmp-dev libmpc-dev libmpfr-dev
-
-      - name: Setup Clang Toolchain
-        uses: krdlab/setup-gcc@v1
-        with:
-          gcc-version: '13'
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zlib1g-dev libgmp-dev libmpc-dev libmpfr-dev gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
       - name: Configure, Merge OSS Lahaina/Vili DTB & Build Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CC=aarch64-linux-gnu-gcc
+          
           make clean && make mrproper
           
           # Merge official vili defconfig and lahaina/qcom device trees
@@ -53,8 +51,8 @@ jobs:
           
           make olddefconfig
           
-          # Build Image.gz, dtbs and dtbo safely
-          make -j$(nproc) CC=gcc
+          # Build Image.gz, dtbs and dtbo safely using cross compiler
+          make -j$(nproc)
           make dtbs
 
       - name: Package with AnyKernel3 (Lahaina Optimized & Zero-Error Unified ZIP)
@@ -67,7 +65,6 @@ jobs:
           cp arch/arm64/boot/dts/qcom/sm8350.dtb anykernel/dtb || cp arch/arm64/boot/dts/qcom/*.dtb anykernel/dtb || true
           cp arch/arm64/boot/dtbo.img anykernel/ || true
           
-          # Clean up anykernel.sh to specifically target lahaina/vili without version locks
           cd anykernel
           
           cat << 'EOF' > anykernel.sh
