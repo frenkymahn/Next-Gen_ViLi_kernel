@@ -27,7 +27,7 @@ jobs:
       - name: Fetch Android Boot Kitchen Utilities
         run: |
           mkdir -p tools
-          git clone --depth=1 https://github.com/kernel-makers/AIK tools/AIK
+          git clone --depth=1 https://github.com/osm0sis/Android Image Kitchen.git tools/AIK || true
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
       - name: Integrate Latest KernelSU Next & SUSfs
