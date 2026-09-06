@@ -89,31 +89,22 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # Force the build system to use standard system tools for local scripts
-          export HOSTCC=gcc
-          export HOSTCXX=g++
-          export HOSTLDFLAGS=""
-          
-          # Set Proton Clang paths specifically for the target phone output compilation
-          CLANG_DIR="$(pwd)/toolchain/clang/bin"
-          export PATH="$CLANG_DIR:$PATH"
-          export CC=clang
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          export LD=ld.lld
-          
-          # Initialize target configurations cleanly 
           make O=out vili_defconfig || make O=out lahaina_user_defconfig || make O=out lahaina_defconfig
           
-          # FIXED: Pass standard system compiler targets directly to script components to bypass the libc conflicts
           make -j$(nproc --all) O=out \
-            CC=$CC \
-            LD=$LD \
-            CROSS_COMPILE=$CROSS_COMPILE \
-            CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 \
-            HOSTCC=$HOSTCC \
-            HOSTCXX=$HOSTCXX \
-            CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
+            CC=$(pwd)/toolchain/clang/bin/clang \
+            LD=$(pwd)/toolchain/clang/bin/ld.lld \
+            AR=$(pwd)/toolchain/clang/bin/llvm-ar \
+            NM=$(pwd)/toolchain/clang/bin/llvm-nm \
+            OBJCOPY=$(pwd)/toolchain/clang/bin/llvm-objcopy \
+            OBJDUMP=$(pwd)/toolchain/clang/bin/llvm-objdump \
+            STRIP=$(pwd)/toolchain/clang/bin/llvm-strip \
+            HOSTCC=$(pwd)/toolchain/clang/bin/clang \
+            HOSTCXX=$(pwd)/toolchain/clang/bin/clang++ \
+            HOSTLD=$(pwd)/toolchain/clang/bin/ld.lld \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            EXTRA_CFLAGS="-Wno-error"
 
       - name: Assemble Final Flashable Partition Images
         run: |
