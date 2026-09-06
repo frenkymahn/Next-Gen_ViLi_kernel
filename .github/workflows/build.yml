@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel & Images (Latest KSU-Next)
+name: Build Next-Gen ViLi Port Kernel & Images (Error-Free KSU-Next)
 
 on:
   workflow_dispatch:
@@ -30,13 +30,13 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
-      - name: Inject KernelSU-Next and Setup Registry
+      - name: Inject KernelSU-Next & SUSfs First (Before Defconfig)
         run: |
           echo "==== Downloading KernelSU-Next ===="
           rm -rf drivers/kernelsu
           git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
 
-          echo "==== Fetching SUSfs Root Hiding Module ===="
+          echo "==== Fetching SUSfs Module ===="
           rm -rf tools/susfs_src
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
           
@@ -55,7 +55,7 @@ jobs:
             echo 'obj-y += kernelsu/' >> drivers/Makefile
           fi
           
-          echo "==== Injecting KernelSU VFS Hooks ===="
+          echo "==== Injecting VFS Hooks ===="
           sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c || true
           sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c || true
 
