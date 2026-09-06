@@ -34,12 +34,7 @@ jobs:
         run: |
           echo "==== Downloading Latest KernelSU Next ===="
           rm -rf drivers/kernelsu
-          git clone --depth=1 -b main https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
-          
-          # Fallback if branch is main/master mismatch
-          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
-            git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu || true
-          fi
+          git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
 
           echo "==== Fetching SUSfs Root Hiding Module ===="
           rm -rf tools/susfs_src
