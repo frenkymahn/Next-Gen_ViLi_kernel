@@ -24,11 +24,9 @@ jobs:
 
       - name: Download Pre-packaged Clang Toolchain
         run: |
-          mkdir -p toolchains/proton-clang
-          # Using an explicit, direct URL with full redirect flags to ensure raw data download
-          curl -fSL "https://github.com" -o proton.tar.gz
-          tar -xzf proton.tar.gz --strip-components=1 -C toolchains/proton-clang
-          rm proton.tar.gz
+          mkdir -p toolchains
+          # Clean, shallow git clone to bypass archive redirect blocks completely
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git toolchains/proton-clang
 
       - name: Setup KernelSU Next in Source
         run: |
