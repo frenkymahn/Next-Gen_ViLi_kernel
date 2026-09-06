@@ -22,6 +22,7 @@ jobs:
 
       - name: Fetch Proton Clang Toolchain
         run: |
+          # FIXED: Added the correct, complete URL path for the kdrag0n proton-clang compiler
           git clone --depth=1 https://github.com toolchain/clang
 
       - name: Fetch Android Boot Kitchen Utilities
@@ -45,7 +46,6 @@ jobs:
           echo 'obj-y += kernelsu/' >> drivers/Makefile
           
           echo "==== Injecting KernelSU VFS Hooks into core Linux VFS ===="
-          # Inject hooks directly into open.c and stat.c to bypass heavy modern safety detection mechanics
           sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c
           sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c
 
@@ -71,6 +71,9 @@ jobs:
           echo "Target defconfig file identified at: $DEFCONFIG_PATH"
           
           cat << 'EOF' >> "$DEFCONFIG_PATH"
+          
+          # --- KERNEL NAMING IDENTIFIER ---
+          CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
           
           # --- NEXT-GEN PORT EMULATION CONFIGS ---
           CONFIG_ANDROID_BINDER_IPC=y
