@@ -37,7 +37,7 @@ jobs:
           # Load vili defconfig directly
           make O=out vili_defconfig
           
-          # Directly build targets without running headers_install sub-make
+          # Directly build targets avoiding any sub-make header installation conflicts
           make O=out -j4 CC=clang Image.gz
           make O=out -j4 CC=clang dtbs
           make O=out -j4 CC=clang dtbo.img
