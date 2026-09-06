@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel & Images (Explicit Folder Creation)
+name: Build Next-Gen ViLi Port Kernel & Images
 
 on:
   workflow_dispatch:
@@ -30,16 +30,12 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
-      - name: Create drivers/kernelsu Folder and Inject Files
+      - name: Setup KernelSU-Next and SUSfs
         run: |
-          echo "==== Step 1: Explicitly Create kernelsu folder inside drivers ===="
           mkdir -p drivers/kernelsu
-
-          echo "==== Step 2: Clone KernelSU-Next into the created folder ===="
           rm -rf drivers/kernelsu/*
           git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
 
-          echo "==== Step 3: Fetch SUSfs and Apply Patches ===="
           rm -rf tools/susfs_src
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
           
@@ -49,7 +45,6 @@ jobs:
             cp -rf tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
           fi
 
-          echo "==== Step 4: Safely Link Kconfig & Makefile ===="
           if [ -f "drivers/kernelsu/Kconfig" ]; then
             if ! grep -q "kernelsu/Kconfig" drivers/Kconfig; then
               echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
@@ -60,21 +55,15 @@ jobs:
             echo 'obj-y += kernelsu/' >> drivers/Makefile
           fi
           
-          echo "==== Step 5: Inject VFS Hooks ===="
           sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c || true
           sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c || true
 
       - name: Inject Configuration Targets to defconfig
         run: |
           DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
-          echo "Target defconfig file: $DEFCONFIG_PATH"
           
           cat << 'EOF' >> "$DEFCONFIG_PATH"
-          
-          # --- KERNEL NAMING IDENTIFIER ---
           CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
-          
-          # --- NEXT-GEN PORT EMULATION CONFIGS ---
           CONFIG_ANDROID_BINDER_IPC=y
           CONFIG_ANDROID_BINDERFS=y
           CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"
@@ -86,8 +75,6 @@ jobs:
           CONFIG_PID_NS=y
           CONFIG_BLK_INLINE_ENCRYPTION=y
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
-          
-          # --- LATEST KERNELSU NEXT & SUSFS INTEGRATION ---
           CONFIG_KSU=y
           CONFIG_KSU_NEXT=y
           CONFIG_KSU_SUSFS=y
@@ -95,7 +82,6 @@ jobs:
           CONFIG_KSU_SUSFS_SUS_MOUNT=y
           CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
           CONFIG_KSU_SUSFS_SUS_SU=y
-          # CONFIG_KSU_DEBUG is not set
           EOF
 
       - name: Build Kernel Binary and Device Trees
@@ -103,18 +89,19 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          echo "Using defconfig target: vili_defconfig"
           make O=out vili_defconfig
           
-          PATH="$(pwd)/toolchain/clang/bin:$PATH" \
-          make -j$(nproc --all) O=out \
+          export PATH="$(pwd)/toolchain/clang/bin:/usr/bin:/bin"
+          
+          make -j64 O=out \
             CC=clang \
             HOSTCC=gcc \
             HOSTCXX=g++ \
             HOSTLD=ld \
             LD=ld.lld \
             CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            EXTRA_CFLAGS="-Wno-error"
 
       - name: Assemble Final Flashable Partition Images
         run: |
