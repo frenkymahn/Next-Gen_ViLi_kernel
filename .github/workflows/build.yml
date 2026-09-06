@@ -18,38 +18,27 @@ jobs:
       - name: Setup Compilation Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk wget zip
 
       - name: Fetch Proton Clang Toolchain
         run: |
-          # FIXED: Preserved stable clone syntax for toolchain assembly
-          git clone --depth=1 https://github.com toolchain/clang
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang toolchain/clang
 
       - name: Fetch Android Boot Kitchen Utilities
         run: |
           mkdir -p tools
-          # FIXED: Fixed the broken space character typo inside the OSM0SIS repository path URL string
-          git clone --depth=1 https://github.com tools/AIK
+          git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
       - name: Integrate Latest KernelSU Next & SUSfs
         run: |
           echo "==== Downloading Latest KernelSU Next ===="
           mkdir -p drivers/kernelsu
-          git clone --depth=1 https://github.com drivers/kernelsu
+          git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next drivers/kernelsu
           
           echo "==== Fetching SUSfs Root Hiding Module ===="
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
-          
-          # FIXED: Dynamically matches the version 5.4 patch tree layout inside the upstream repository
-          if [ -d "tools/susfs_src/kernel_5.4" ]; then
-            cp -r tools/susfs_src/kernel_5.4/* drivers/kernelsu/
-          elif [ -d "tools/susfs_src/kernel" ]; then
-            cp -r tools/susfs_src/kernel/* drivers/kernelsu/
-          else
-            # Automated fallback if structures are flat inside the cloned package source
-            find tools/susfs_src/ -type d -name "*5.4*" -exec cp -r {}/* drivers/kernelsu/ \;
-          fi
+          cp -r tools/susfs_src/kernel/* drivers/kernelsu/
           
           # Wire KernelSU Next into the kernel compilation registry
           echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
