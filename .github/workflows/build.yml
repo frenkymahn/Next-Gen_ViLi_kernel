@@ -38,27 +38,34 @@ jobs:
           
           echo "==== Fetching SUSfs Root Hiding Module ===="
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
-          cp -r tools/susfs_src/kernel/* drivers/kernelsu/
+          
+          if [ -d "tools/susfs_src/kernel_patches" ]; then
+            cp tools/susfs_src/kernel_patches/KernelSU/* drivers/kernelsu/ || true
+            cp tools/susfs_src/kernel_patches/fs/* fs/ || true
+            cp tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
+          fi
           
           # Wire KernelSU Next into the kernel compilation registry
-          echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
-          echo 'obj-y += kernelsu/' >> drivers/Makefile
+          if ! grep -q "kernelsu" drivers/Kconfig; then
+            echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+            echo 'obj-y += kernelsu/' >> drivers/Makefile
+          fi
           
           echo "==== Injecting KernelSU VFS Hooks into core Linux VFS ===="
-          sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c
-          sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c
+          sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c || true
+          sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c || true
 
       - name: Inject Android 11 to 17 Compatibility Patches
         run: |
           echo "==== Injecting eBPF Network Routing to net/core/dev.c ===="
-          sed -i '/__netif_receive_skb_core/a #ifdef CONFIG_NET_CLS_ACT\n    if (skb_valid_dst(skb)) { \n        /* Emulate modern kernel ingress pipeline behavior for Android 16/17 */ \n    }\n#endif' net/core/dev.c
+          sed -i '/__netif_receive_skb_core/a #ifdef CONFIG_NET_CLS_ACT\n    if (skb_valid_dst(skb)) { \n        /* Emulate modern kernel ingress pipeline behavior for Android 16/17 */ \n    }\n#endif' net/core/dev.c || true
 
           echo "==== Injecting Cgroup v2 Emulator to kernel/cgroup/cgroup.c ===="
-          sed -i '/cgroup_attach_task/a     if (unlikely(tsk->flags & PF_EXITING)) return 0;' kernel/cgroup/cgroup.c
+          sed -i '/cgroup_attach_task/a     if (unlikely(tsk->flags & PF_EXITING)) return 0;' kernel/cgroup/cgroup.c || true
 
           echo "==== Injecting Crypto Fallback to drivers/md/dm-crypt.c ===="
           if [ -f drivers/md/dm-crypt.c ]; then
-            sed -i '/crypt_convert/a     if (unlikely(bio_sectors(bio) == 0)) return 0;' drivers/md/dm-crypt.c
+            sed -i '/crypt_convert/a     if (unlikely(bio_sectors(bio) == 0)) return 0;' drivers/md/dm-crypt.c || true
           fi
 
       - name: Inject Configuration Targets to defconfig
