@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel & Images (Latest KSU-Next)
+Name: Build Next-Gen ViLi Port Kernel & Images (Latest KSU-Next)
 
 on:
   workflow_dispatch:
@@ -22,23 +22,22 @@ jobs:
 
       - name: Fetch Proton Clang Toolchain
         run: |
-          # FIXED: Added the correct, complete URL path for the kdrag0n proton-clang compiler
-          git clone --depth=1 https://github.com toolchain/clang
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang toolchain/clang
 
       - name: Fetch Android Boot Kitchen Utilities
         run: |
           mkdir -p tools
-          git clone --depth=1 https://github.com tools/AIK
-          git clone --depth=1 https://googlesource.com tools/mkbootimg
+          git clone --depth=1 https://github.com/kernel-makers/AIK tools/AIK
+          git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
       - name: Integrate Latest KernelSU Next & SUSfs
         run: |
           echo "==== Downloading Latest KernelSU Next ===="
           mkdir -p drivers/kernelsu
-          git clone --depth=1 https://github.com drivers/kernelsu
+          git clone --depth=1 https://github.com/rifsxd/KernelSU-Next drivers/kernelsu
           
           echo "==== Fetching SUSfs Root Hiding Module ===="
-          git clone --depth=1 https://github.com tools/susfs_src
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
           cp -r tools/susfs_src/kernel/* drivers/kernelsu/
           
           # Wire KernelSU Next into the kernel compilation registry
