@@ -1,4 +1,4 @@
-name: Build Xiaomi 11T Pro (vili) Kernel & Vendor_Boot
+name: Build Xiaomi 11T Pro (vili) Clean Kernel
 
 on:
   workflow_dispatch:
@@ -17,16 +17,12 @@ jobs:
         with:
           branch: ${{ github.event.inputs.branch }}
 
-      - name: Setup KernelSU Next
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-
       - name: Setup Environment & Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf imagemagick libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev clang lld llvm gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Direct Kernel Compile
+      - name: Build Clean Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -37,7 +33,7 @@ jobs:
           # Load vili defconfig
           make O=out vili_defconfig
           
-          # Directly build Image.gz without triggering headers_install sub-make errors
+          # Compile clean kernel image and device trees
           make O=out -j4 CC=clang Image.gz
           make O=out -j4 CC=clang dtbs
           make O=out -j4 CC=clang dtbo.img
@@ -45,7 +41,7 @@ jobs:
       - name: Package Output Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vili-hyperos-kernelsu-artifacts
+          name: vili-clean-kernel-artifacts
           path: |
             out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dtb
