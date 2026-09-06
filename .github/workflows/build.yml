@@ -25,7 +25,8 @@ jobs:
       - name: Download Pre-packaged Clang Toolchain
         run: |
           mkdir -p toolchains/proton-clang
-          wget https://github.com -O proton.tar.gz
+          # Uses curl with explicit redirect follows (-L) to handle the GitHub archive routing properly
+          curl -Lk https://github.com -o proton.tar.gz
           tar -xzf proton.tar.gz --strip-components=1 -C toolchains/proton-clang
           rm proton.tar.gz
 
@@ -51,11 +52,9 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
-          # Initialize output directory clean slate
           rm -rf out
           mkdir -p out
           
-          # Generate base device config
           make O=out vili_defconfig
           
           # Enable strict port ROM overlays and disable security signature blocks
@@ -63,7 +62,6 @@ jobs:
           scripts/config --file out/.config --disable CONFIG_SECCOMP
           scripts/config --file out/.config --enable CONFIG_ANDROID_BINDER_IPC
           
-          # Re-sync configuration variables
           make O=out olddefconfig
           
           # Compile image targets
@@ -76,14 +74,10 @@ jobs:
           git clone https://github.com --depth=1 packaging
           rm -rf packaging/.git
           
-          # Force AnyKernel3 script to bypass strict validation rules
           sed -i 's/do.deviceoverride=0/do.deviceoverride=1/g' packaging/anykernel.sh
-          
-          # Direct AnyKernel3 to look dynamically for target mount blocks
           sed -i 's/block=\/dev\/block\/bootdevice\/by-name\/boot;/block=auto;/g' packaging/anykernel.sh
           sed -i 's/is_slot_device=0/is_slot_device=auto/g' packaging/anykernel.sh
           
-          # Move compiled files into packaging folder
           if [ -f "out/arch/arm64/boot/Image.gz" ]; then
               cp out/arch/arm64/boot/Image.gz packaging/
           fi
