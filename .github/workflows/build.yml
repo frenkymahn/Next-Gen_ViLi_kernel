@@ -18,7 +18,7 @@ jobs:
       - name: Setup Compilation Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk wget zip
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk wget zip gcc-multilib
 
       - name: Fetch Proton Clang Toolchain
         run: |
