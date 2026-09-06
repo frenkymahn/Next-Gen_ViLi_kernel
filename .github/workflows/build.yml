@@ -22,11 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi python3 tar wget zip unzip
 
-      - name: Download AOSP Clang 17 Toolchain
+      - name: Download Stable AOSP Clang 17 Toolchain
         run: |
-          mkdir -p toolchains
-          # Clean clone of a dedicated prebuilt AOSP Clang r485202 repository
-          git clone --depth=1 https://github.com -b clang-r485202 toolchains/aosp-clang
+          mkdir -p native_compiler
+          # Uses an absolute direct path to a completely different mirror to break the cache loop
+          git clone --depth=1 https://gitlab.com -b 17 native_compiler/aosp-clang
 
       - name: Setup KernelSU Next in Source
         run: |
@@ -40,7 +40,7 @@ jobs:
           # Custom Local Version Name
           export LOCALVERSION="-Next-Gen-ViLi-5.10"
           
-          TOOLCHAIN_BIN=$(pwd)/toolchains/aosp-clang/bin
+          TOOLCHAIN_BIN=$(pwd)/native_compiler/aosp-clang/bin
           export PATH="$TOOLCHAIN_BIN:$PATH"
           
           export CC=clang
