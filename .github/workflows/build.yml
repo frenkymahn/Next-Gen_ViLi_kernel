@@ -33,21 +33,30 @@ jobs:
       - name: Integrate Latest KernelSU Next & SUSfs
         run: |
           echo "==== Downloading Latest KernelSU Next ===="
-          mkdir -p drivers/kernelsu
-          git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next drivers/kernelsu
+          rm -rf drivers/kernelsu
+          git clone --depth=1 -b main https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
           
+          # Fallback if branch is main/master mismatch
+          if [ ! -f "drivers/kernelsu/Kconfig" ]; then
+            git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu || true
+          fi
+
           echo "==== Fetching SUSfs Root Hiding Module ===="
+          rm -rf tools/susfs_src
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
           
           if [ -d "tools/susfs_src/kernel_patches" ]; then
-            cp tools/susfs_src/kernel_patches/KernelSU/* drivers/kernelsu/ || true
-            cp tools/susfs_src/kernel_patches/fs/* fs/ || true
-            cp tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
+            cp -rf tools/susfs_src/kernel_patches/KernelSU/* drivers/kernelsu/ || true
+            cp -rf tools/susfs_src/kernel_patches/fs/* fs/ || true
+            cp -rf tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
           fi
           
-          # Wire KernelSU Next into the kernel compilation registry
+          # Wire KernelSU Next into the kernel compilation registry safely
           if ! grep -q "kernelsu" drivers/Kconfig; then
-            echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+            sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig || echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+          fi
+          
+          if ! grep -q "kernelsu" drivers/Makefile; then
             echo 'obj-y += kernelsu/' >> drivers/Makefile
           fi
           
