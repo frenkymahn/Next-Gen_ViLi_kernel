@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel & Images (Error-Free KSU-Next)
+name: Build Next-Gen ViLi Port Kernel & Images (Explicit Folder Creation)
 
 on:
   workflow_dispatch:
@@ -30,13 +30,16 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
-      - name: Inject KernelSU-Next & SUSfs First (Before Defconfig)
+      - name: Create drivers/kernelsu Folder and Inject Files
         run: |
-          echo "==== Downloading KernelSU-Next ===="
-          rm -rf drivers/kernelsu
+          echo "==== Step 1: Explicitly Create kernelsu folder inside drivers ===="
+          mkdir -p drivers/kernelsu
+
+          echo "==== Step 2: Clone KernelSU-Next into the created folder ===="
+          rm -rf drivers/kernelsu/*
           git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
 
-          echo "==== Fetching SUSfs Module ===="
+          echo "==== Step 3: Fetch SUSfs and Apply Patches ===="
           rm -rf tools/susfs_src
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
           
@@ -46,16 +49,18 @@ jobs:
             cp -rf tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
           fi
 
-          echo "==== Injecting Kconfig and Makefile Entries ===="
-          if ! grep -q "kernelsu" drivers/Kconfig; then
-            sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig || echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+          echo "==== Step 4: Safely Link Kconfig & Makefile ===="
+          if [ -f "drivers/kernelsu/Kconfig" ]; then
+            if ! grep -q "kernelsu/Kconfig" drivers/Kconfig; then
+              echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
+            fi
           fi
           
-          if ! grep -q "kernelsu" drivers/Makefile; then
+          if ! grep -q "kernelsu/" drivers/Makefile; then
             echo 'obj-y += kernelsu/' >> drivers/Makefile
           fi
           
-          echo "==== Injecting VFS Hooks ===="
+          echo "==== Step 5: Inject VFS Hooks ===="
           sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c || true
           sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c || true
 
