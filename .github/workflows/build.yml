@@ -1,4 +1,4 @@
-Name: Build Next-Gen ViLi Port Kernel & Images (Latest KSU-Next)
+name: Build Next-Gen ViLi Port Kernel & Images (Latest KSU-Next)
 
 on:
   workflow_dispatch:
