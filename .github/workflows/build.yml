@@ -30,34 +30,6 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
-      - name: Setup KernelSU-Next and SUSfs
-        run: |
-          mkdir -p drivers/kernelsu
-          rm -rf drivers/kernelsu/*
-          git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git drivers/kernelsu
-
-          rm -rf tools/susfs_src
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git tools/susfs_src
-          
-          if [ -d "tools/susfs_src/kernel_patches" ]; then
-            cp -rf tools/susfs_src/kernel_patches/KernelSU/* drivers/kernelsu/ || true
-            cp -rf tools/susfs_src/kernel_patches/fs/* fs/ || true
-            cp -rf tools/susfs_src/kernel_patches/include/linux/* include/linux/ || true
-          fi
-
-          if [ -f "drivers/kernelsu/Kconfig" ]; then
-            if ! grep -q "kernelsu/Kconfig" drivers/Kconfig; then
-              echo 'source "drivers/kernelsu/Kconfig"' >> drivers/Kconfig
-            fi
-          fi
-          
-          if ! grep -q "kernelsu/" drivers/Makefile; then
-            echo 'obj-y += kernelsu/' >> drivers/Makefile
-          fi
-          
-          sed -i '/copy_to_user/a \    #ifdef CONFIG_KSU\n    ksu_handle_stat(dfd, filename, flags);\n    #endif' fs/stat.c || true
-          sed -i '/do_sys_open/a \    #ifdef CONFIG_KSU\n    ksu_handle_open(dfd, filename, flags, mode);\n    #endif' fs/open.c || true
-
       - name: Inject Configuration Targets to defconfig
         run: |
           DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
@@ -75,13 +47,6 @@ jobs:
           CONFIG_PID_NS=y
           CONFIG_BLK_INLINE_ENCRYPTION=y
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
-          CONFIG_KSU=y
-          CONFIG_KSU_NEXT=y
-          CONFIG_KSU_SUSFS=y
-          CONFIG_KSU_SUSFS_SUS_PATH=y
-          CONFIG_KSU_SUSFS_SUS_MOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_SU=y
           EOF
 
       - name: Build Kernel Binary and Device Trees
@@ -99,9 +64,9 @@ jobs:
             OBJCOPY=$(pwd)/toolchain/clang/bin/llvm-objcopy \
             OBJDUMP=$(pwd)/toolchain/clang/bin/llvm-objdump \
             STRIP=$(pwd)/toolchain/clang/bin/llvm-strip \
-            HOSTCC=$(pwd)/toolchain/clang/bin/clang \
-            HOSTCXX=$(pwd)/toolchain/clang/bin/clang++ \
-            HOSTLD=$(pwd)/toolchain/clang/bin/ld.lld \
+            HOSTCC=gcc \
+            HOSTCXX=g++ \
+            HOSTLD=/usr/bin/ld \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             EXTRA_CFLAGS="-Wno-error"
@@ -131,7 +96,7 @@ jobs:
       - name: Upload Output Kit
         uses: actions/upload-artifact@v4
         with:
-          name: ViLi-NextGen-KSU-Next-Kit
+          name: ViLi-NextGen-Kit
           path: |
             output/boot.img
             output/dtbo.img
