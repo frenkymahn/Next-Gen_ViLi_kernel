@@ -22,25 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libgmp-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi python3 tar wget zip unzip
 
-      - name: Download AOSP Clang 17 Toolchain via Direct CDN Mirror
+      - name: Download AOSP Clang 17 Toolchain
         run: |
-          mkdir -p toolchains/aosp-clang
-          # Uses a direct, unblocked binary archive mirror that streams raw data cleanly without HTML redirects
-          curl -Lk "https://googlesource.com" -o clang.tar.gz || \
-          wget --no-check-certificate https://githubusercontent.com -O- | bash || \
-          git clone --depth=1 https://gitlab.com -b 17 toolchains/aosp-clang
-          
-          # Fallback extraction safety loop block
-          if [ -f "clang.tar.gz" ]; then
-             tar -xzf clang.tar.gz -C toolchains/aosp-clang || rm -rf toolchains/aosp-clang
-             rm -f clang.tar.gz
-          fi
-          
-          # Absolute assurance backup: If standard curl hits a wall, pull the prebuilt git package matching Clang 17 layout rules
-          if [ ! -f "toolchains/aosp-clang/bin/clang" ]; then
-             rm -rf toolchains/aosp-clang
-             git clone --depth=1 https://github.com -b clang-r485202 toolchains/aosp-clang
-          fi
+          mkdir -p toolchains
+          # Clean clone of a dedicated prebuilt AOSP Clang r485202 repository
+          git clone --depth=1 https://github.com -b clang-r485202 toolchains/aosp-clang
 
       - name: Setup KernelSU Next in Source
         run: |
