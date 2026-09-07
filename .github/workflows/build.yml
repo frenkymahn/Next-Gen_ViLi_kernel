@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel with GCC
+name: Build Next-Gen ViLi Port Kernel & Images
 
 on:
   workflow_dispatch:
@@ -18,8 +18,11 @@ jobs:
       - name: Setup Compilation Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip gcc-multilib g++-multilib
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-linux-gnueabi g++-arm-linux-gnueabi || true
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk wget zip gcc-multilib g++-multilib
+
+      - name: Fetch Proton Clang Toolchain
+        run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang toolchain/clang
 
       - name: Fetch Android Boot Kitchen Utilities
         run: |
@@ -46,7 +49,7 @@ jobs:
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
           EOF
 
-      - name: Build Kernel Binary and Device Trees with GCC
+      - name: Build Kernel Binary and Device Trees
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -54,7 +57,13 @@ jobs:
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
           make -j4 O=out \
-            ARCH=arm64 \
+            CC=$(pwd)/toolchain/clang/bin/clang \
+            LD=$(pwd)/toolchain/clang/bin/ld.lld \
+            AR=$(pwd)/toolchain/clang/bin/llvm-ar \
+            NM=$(pwd)/toolchain/clang/bin/llvm-nm \
+            OBJCOPY=$(pwd)/toolchain/clang/bin/llvm-objcopy \
+            OBJDUMP=$(pwd)/toolchain/clang/bin/llvm-objdump \
+            STRIP=$(pwd)/toolchain/clang/bin/llvm-strip \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             HOSTCC=gcc \
@@ -86,7 +95,7 @@ jobs:
       - name: Upload Output Kit
         uses: actions/upload-artifact@v4
         with:
-          name: ViLi-NextGen-GCC-Kit
+          name: ViLi-NextGen-Kit
           path: |
             output/boot.img
             output/dtbo.img
