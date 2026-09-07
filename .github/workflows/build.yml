@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel
+name: Build Next-Gen ViLi Port Kernel & Images
 
 on:
   workflow_dispatch:
@@ -15,22 +15,14 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Setup Essential Host Tools
+      - name: Setup Compilation Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev clang lld llvm bison flex python3 openjdk-17-jdk wget zip gcc-multilib g++-multilib
 
-      - name: Fetch Official AOSP GCC Toolchains (Permanent Fix)
+      - name: Fetch Proton Clang Toolchain
         run: |
-          mkdir -p toolchain/gcc64 toolchain/gcc32
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 toolchain/gcc64 || true
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 toolchain/gcc32 || true
-          
-          # Fallback to Linaro/Arm GNU Toolchain if needed
-          if [ ! -d "toolchain/gcc64/bin" ]; then
-            wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
-            tar -xf gcc-aarch64.tar.xz --strip-components=1 -C toolchain/gcc64
-          fi
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang toolchain/clang
 
       - name: Fetch Android Boot Kitchen Utilities
         run: |
@@ -62,25 +54,21 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # Set Toolchain Paths correctly
-          GCC64_BIN="$(pwd)/toolchain/gcc64/bin"
-          
-          if [ -d "$GCC64_BIN" ]; then
-            CROSS_COMPILE_PATH="$GCC64_BIN/aarch64-none-linux-gnu-"
-            if [ ! -f "$GCC64_BIN/aarch64-none-linux-gnu-gcc" ]; then
-              CROSS_COMPILE_PATH="$GCC64_BIN/aarch64-linux-android-"
-            fi
-          else
-            CROSS_COMPILE_PATH="aarch64-linux-gnu-"
-          fi
-
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
           make -j4 O=out \
-            ARCH=arm64 \
-            CROSS_COMPILE="$CROSS_COMPILE_PATH" \
+            CC=$(pwd)/toolchain/clang/bin/clang \
+            LD=$(pwd)/toolchain/clang/bin/ld.lld \
+            AR=$(pwd)/toolchain/clang/bin/llvm-ar \
+            NM=$(pwd)/toolchain/clang/bin/llvm-nm \
+            OBJCOPY=$(pwd)/toolchain/clang/bin/llvm-objcopy \
+            OBJDUMP=$(pwd)/toolchain/clang/bin/llvm-objdump \
+            STRIP=$(pwd)/toolchain/clang/bin/llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             HOSTCC=gcc \
             HOSTCXX=g++ \
+            KBUILD_CFLAGS="-Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error" \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
 
       - name: Assemble Final Flashable Partition Images
