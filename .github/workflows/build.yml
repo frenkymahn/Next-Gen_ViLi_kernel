@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel with GCC
+name: Build Next-Gen ViLi Port Kernel
 
 on:
   workflow_dispatch:
@@ -15,10 +15,22 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Setup Compilation Tools
+      - name: Setup Essential Host Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip gcc-multilib g++-multilib gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip
+
+      - name: Fetch Official AOSP GCC Toolchains (Permanent Fix)
+        run: |
+          mkdir -p toolchain/gcc64 toolchain/gcc32
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 toolchain/gcc64 || true
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 toolchain/gcc32 || true
+          
+          # Fallback to Linaro/Arm GNU Toolchain if needed
+          if [ ! -d "toolchain/gcc64/bin" ]; then
+            wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
+            tar -xf gcc-aarch64.tar.xz --strip-components=1 -C toolchain/gcc64
+          fi
 
       - name: Fetch Android Boot Kitchen Utilities
         run: |
@@ -45,17 +57,28 @@ jobs:
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
           EOF
 
-      - name: Build Kernel Binary and Device Trees with GCC
+      - name: Build Kernel Binary and Device Trees
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           
+          # Set Toolchain Paths correctly
+          GCC64_BIN="$(pwd)/toolchain/gcc64/bin"
+          
+          if [ -d "$GCC64_BIN" ]; then
+            CROSS_COMPILE_PATH="$GCC64_BIN/aarch64-none-linux-gnu-"
+            if [ ! -f "$GCC64_BIN/aarch64-none-linux-gnu-gcc" ]; then
+              CROSS_COMPILE_PATH="$GCC64_BIN/aarch64-linux-android-"
+            fi
+          else
+            CROSS_COMPILE_PATH="aarch64-linux-gnu-"
+          fi
+
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
           make -j4 O=out \
             ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            CROSS_COMPILE="$CROSS_COMPILE_PATH" \
             HOSTCC=gcc \
             HOSTCXX=g++ \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
@@ -85,7 +108,7 @@ jobs:
       - name: Upload Output Kit
         uses: actions/upload-artifact@v4
         with:
-          name: ViLi-NextGen-GCC-Kit
+          name: ViLi-NextGen-Kit
           path: |
             output/boot.img
             output/dtbo.img
