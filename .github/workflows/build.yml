@@ -30,30 +30,44 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
+      - name: Inject Configuration Targets to defconfig
+        run: |
+          DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
+          
+          cat << 'EOF' >> "$DEFCONFIG_PATH"
+          CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
+          CONFIG_ANDROID_BINDER_IPC=y
+          CONFIG_ANDROID_BINDERFS=y
+          CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"
+          CONFIG_BPF_SYSCALL=y
+          CONFIG_NET_CLS_ACT=y
+          CONFIG_CGROUP_BPF=y
+          CONFIG_NAMESPACES=y
+          CONFIG_USER_NS=y
+          CONFIG_PID_NS=y
+          CONFIG_BLK_INLINE_ENCRYPTION=y
+          CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
+          EOF
+
       - name: Build Kernel Binary and Device Trees
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           
-          make O=out HOSTCC=gcc HOSTCXX=g++ HOSTLD=ld vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ HOSTLD=ld lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ HOSTLD=ld lahaina_defconfig
+          make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
-          CLANG_BIN="$(pwd)/toolchain/clang/bin"
-          
-          make -j$(nproc --all) O=out \
-            CC="$CLANG_BIN/clang" \
-            LD="$CLANG_BIN/ld.lld" \
-            AR="$CLANG_BIN/llvm-ar" \
-            NM="$CLANG_BIN/llvm-nm" \
-            OBJCOPY="$CLANG_BIN/llvm-objcopy" \
-            OBJDUMP="$CLANG_BIN/llvm-objdump" \
-            STRIP="$CLANG_BIN/llvm-strip" \
-            CROSS_COMPILE="aarch64-linux-gnu-" \
-            CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
+          make -j4 O=out \
+            CC=$(pwd)/toolchain/clang/bin/clang \
+            LD=$(pwd)/toolchain/clang/bin/ld.lld \
+            AR=$(pwd)/toolchain/clang/bin/llvm-ar \
+            NM=$(pwd)/toolchain/clang/bin/llvm-nm \
+            OBJCOPY=$(pwd)/toolchain/clang/bin/llvm-objcopy \
+            OBJDUMP=$(pwd)/toolchain/clang/bin/llvm-objdump \
+            STRIP=$(pwd)/toolchain/clang/bin/llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             HOSTCC=gcc \
             HOSTCXX=g++ \
-            HOSTLD=ld \
-            HOSTCFLAGS="-I/usr/include -I/usr/include/x86_64-linux-gnu" \
-            HOSTLDFLAGS="-L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu" \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
 
       - name: Assemble Final Flashable Partition Images
