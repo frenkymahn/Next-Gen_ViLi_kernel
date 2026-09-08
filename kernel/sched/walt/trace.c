@@ -17,6 +17,7 @@ extern unsigned long long sched_clock(void);
 extern unsigned int cpu_cycles_to_freq(u64 cycles, u64 exec_time);
 extern unsigned int sched_cpu_legacy_freq(int cpu);
 extern unsigned int cpu_max_freq(int cpu);
+extern bool sched_cpu_high_irqload(int cpu);
 
 #ifndef CONFIG_SCHED_WALT
 static inline void __window_data(u32 *dst, u32 *src)
@@ -45,30 +46,20 @@ static inline s64 __rq_update_sum(struct rq *rq, bool curr, bool new)
 {
     if (curr) {
         if (new)
-            return rq->rt.curr_runnable_sum;
+            return rq->wrq.curr_runnable_sum;
         else
-            return rq->rt.curr_runnable_sum;
+            return rq->wrq.curr_runnable_sum;
     } else {
         if (new)
-            return rq->rt.prev_runnable_sum;
+            return rq->wrq.prev_runnable_sum;
         else
-            return rq->rt.prev_runnable_sum;
+            return rq->wrq.prev_runnable_sum;
     }
 }
 
 static inline s64 __grp_update_sum(struct rq *rq, bool curr, bool new)
 {
-    if (curr) {
-        if (new)
-            return rq->grp_time.nt.curr_runnable_sum;
-        else
-            return rq->grp_time.nt.curr_runnable_sum;
-    } else {
-        if (new)
-            return rq->grp_time.nt.prev_runnable_sum;
-        else
-            return rq->grp_time.nt.prev_runnable_sum;
-    }
+    return 0;
 }
 
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
