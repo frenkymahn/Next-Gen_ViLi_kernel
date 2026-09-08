@@ -6,80 +6,86 @@
 #include "trace.h"
 #include <linux/sched.h>
 #include <linux/seq_buf.h>
+
+#ifndef MAX_CLUSTERS
+#define MAX_CLUSTERS 3
+#endif
+
 extern unsigned long long sched_clock(void);
 
-#ifdef CONFIG_SCHED_WALT
+#ifndef CONFIG_SCHED_WALT
 static inline void __window_data(u32 *dst, u32 *src)
 {
-	if (src)
-		memcpy(dst, src, nr_cpu_ids * sizeof(u32));
-	else
-		memset(dst, 0, nr_cpu_ids * sizeof(u32));
+    if (src)
+        memcpy(dst, src, nr_cpu_ids * sizeof(u32));
+    else
+        memset(dst, 0, nr_cpu_ids * sizeof(u32));
 }
+#endif
 
 struct trace_seq;
 const char *__window_print(struct trace_seq *p, const u32 *buf, int buf_len)
 {
-	int i;
-	const char *ret = p->buffer + seq_buf_used(&p->seq);
+    int i;
+    const char *ret = p->buffer + seq_buf_used(&p->seq);
 
-	for (i = 0; i < buf_len; i++)
-		trace_seq_printf(p, "%u ", buf[i]);
+    for (i = 0; i < buf_len; i++)
+        trace_seq_printf(p, "%u ", buf[i]);
 
-	trace_seq_putc(p, 0);
+    trace_seq_putc(p, 0);
 
-	return ret;
+    return ret;
 }
 
 static inline s64 __rq_update_sum(struct rq *rq, bool curr, bool new)
 {
-	if (curr)
-		if (new)
-			return rq->wrq.nt_curr_runnable_sum;
-		else
-			return rq->wrq.curr_runnable_sum;
-	else
-		if (new)
-			return rq->wrq.nt_prev_runnable_sum;
-		else
-			return rq->wrq.prev_runnable_sum;
+    if (curr) {
+        if (new)
+            return rq->rt.curr_runnable_sum;
+        else
+            return rq->rt.curr_runnable_sum;
+    } else {
+        if (new)
+            return rq->rt.prev_runnable_sum;
+        else
+            return rq->rt.prev_runnable_sum;
+    }
 }
 
 static inline s64 __grp_update_sum(struct rq *rq, bool curr, bool new)
 {
-	if (curr)
-		if (new)
-			return rq->wrq.grp_time.nt_curr_runnable_sum;
-		else
-			return rq->wrq.grp_time.curr_runnable_sum;
-	else
-		if (new)
-			return rq->wrq.grp_time.nt_prev_runnable_sum;
-		else
-			return rq->wrq.grp_time.prev_runnable_sum;
+    if (curr) {
+        if (new)
+            return rq->grp_time.nt.curr_runnable_sum;
+        else
+            return rq->grp_time.nt.curr_runnable_sum;
+    } else {
+        if (new)
+            return rq->grp_time.nt.prev_runnable_sum;
+        else
+            return rq->grp_time.nt.prev_runnable_sum;
+    }
 }
 
-static inline s64
-__get_update_sum(struct rq *rq, enum migrate_types migrate_type,
-		 bool src, bool new, bool curr)
+static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
+                  bool src, bool new, bool curr)
 {
-	switch (migrate_type) {
-	case RQ_TO_GROUP:
-		if (src)
-			return __rq_update_sum(rq, curr, new);
-		else
-			return __grp_update_sum(rq, curr, new);
-	case GROUP_TO_RQ:
-		if (src)
-			return __grp_update_sum(rq, curr, new);
-		else
-			return __rq_update_sum(rq, curr, new);
-	default:
-		WARN_ON_ONCE(1);
-		return -1;
-	}
+    switch (migrate_type) {
+    case RQ_TO_GROUP:
+        if (src)
+            return __rq_update_sum(rq, curr, new);
+        else
+            return __grp_update_sum(rq, curr, new);
+    case GROUP_TO_RQ:
+        if (src)
+            return __grp_update_sum(rq, curr, new);
+        else
+            return __rq_update_sum(rq, curr, new);
+    default:
+        WARN_ON_ONCE(1);
+        return -1;
+    }
 }
-#endif
+
 #define CREATE_TRACE_POINTS
 #include "trace.h"
-
