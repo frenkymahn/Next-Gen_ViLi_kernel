@@ -12,6 +12,9 @@
 #endif
 
 extern unsigned long long sched_clock(void);
+extern unsigned int cpu_cycles_to_freq(u64 cycles, u64 exec_time);
+extern unsigned int sched_cpu_legacy_freq(int cpu);
+extern unsigned int cpu_max_freq(int cpu);
 
 #ifndef CONFIG_SCHED_WALT
 static inline void __window_data(u32 *dst, u32 *src)
