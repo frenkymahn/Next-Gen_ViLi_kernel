@@ -6,6 +6,7 @@
 #include "trace.h"
 #include <linux/sched.h>
 #include <linux/seq_buf.h>
+#include <linux/trace_seq.h>
 
 #ifndef MAX_CLUSTERS
 #define MAX_CLUSTERS 3
@@ -26,7 +27,6 @@ static inline void __window_data(u32 *dst, u32 *src)
 }
 #endif
 
-struct trace_seq;
 const char *__window_print(struct trace_seq *p, const u32 *buf, int buf_len)
 {
     int i;
