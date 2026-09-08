@@ -104,8 +104,7 @@
  *
  * (asm goto is automatically volatile - the naming reflects this.)
  */
-#define asm_volatile_goto(x...)	do { asm goto(x); asm (""); } while (0)
-
+#define asm_volatile_goto(x...) do { asm goto(x); } while (0)
 /*
  * sparse (__CHECKER__) pretends to be gcc, but can't do constant
  * folding in __builtin_bswap*() (yet), so don't set these for it.
