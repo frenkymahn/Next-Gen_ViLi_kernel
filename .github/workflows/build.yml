@@ -69,7 +69,7 @@ jobs:
 
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
-          make -j4 O=out \
+          make -j1 O=out \
             ARCH=arm64 \
             CROSS_COMPILE="$CROSS_64" \
             CROSS_COMPILE_ARM32="$CROSS_32" \
