@@ -3,6 +3,7 @@
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
+#include "../sched.h"
 #include "trace.h"
 #include <linux/sched.h>
 #include <linux/seq_buf.h>
