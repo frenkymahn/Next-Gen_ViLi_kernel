@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel (Clang)
+name: Build Next-Gen ViLi Kernel (Linux 5.10)
 
 on:
   workflow_dispatch:
@@ -32,30 +32,11 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen tools/AIK
           git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg tools/mkbootimg
 
-      - name: Inject Configuration Targets
-        run: |
-          DEFCONFIG_PATH="arch/arm64/configs/vili_defconfig"
-          
-          cat << 'EOF' >> "$DEFCONFIG_PATH"
-          CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
-          CONFIG_ANDROID_BINDER_IPC=y
-          CONFIG_ANDROID_BINDERFS=y
-          CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"
-          CONFIG_BPF_SYSCALL=y
-          CONFIG_NET_CLS_ACT=y
-          CONFIG_CGROUP_BPF=y
-          CONFIG_NAMESPACES=y
-          CONFIG_USER_NS=y
-          CONFIG_PID_NS=y
-          CONFIG_BLK_INLINE_ENCRYPTION=y
-          CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
-          EOF
-
       - name: Clean Output Directory
         run: |
           rm -rf out
 
-      - name: Build Kernel Binary with Clang
+      - name: Build Kernel Binary (Linux 5.10)
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -65,7 +46,7 @@ jobs:
 
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
-          make -j1 O=out \
+          make -j$(nproc) O=out \
             ARCH=arm64 \
             CC=clang \
             LD=ld.lld \
@@ -103,7 +84,7 @@ jobs:
       - name: Upload Output Kit
         uses: actions/upload-artifact@v4
         with:
-          name: ViLi-NextGen-Kit
+          name: ViLi-NextGen-Kit-5.10
           path: |
             output/boot.img
             output/dtbo.img
