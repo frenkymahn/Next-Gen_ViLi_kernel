@@ -20,13 +20,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip
 
-      - name: Fetch Official GCC Toolchains (No Unmet Dependencies)
+      - name: Fetch GCC 11 Toolchains
         run: |
           mkdir -p toolchain/gcc64 toolchain/gcc32
-          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
+          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
           tar -xf gcc-aarch64.tar.xz --strip-components=1 -C toolchain/gcc64
           
-          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz -O gcc-arm32.tar.xz
+          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz -O gcc-arm32.tar.xz
           tar -xf gcc-arm32.tar.xz --strip-components=1 -C toolchain/gcc32
 
       - name: Fetch Utilities
@@ -53,6 +53,10 @@ jobs:
           CONFIG_BLK_INLINE_ENCRYPTION=y
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
           EOF
+
+      - name: Clean Output Directory
+        run: |
+          rm -rf out
 
       - name: Build Kernel Binary
         run: |
