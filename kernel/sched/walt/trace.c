@@ -4,6 +4,8 @@
  */
 
 #include "trace.h"
+#include <linux/sched.h>
+extern unsigned long long sched_clock(void);
 
 #ifdef CONFIG_SCHED_WALT
 static inline void __window_data(u32 *dst, u32 *src)
