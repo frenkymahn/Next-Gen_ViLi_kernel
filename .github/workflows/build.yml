@@ -1,4 +1,4 @@
-name: Build Next-Gen ViLi Port Kernel
+name: Build Next-Gen ViLi Port Kernel (Clang)
 
 on:
   workflow_dispatch:
@@ -18,16 +18,13 @@ jobs:
       - name: Setup Essential Host Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip lld llvm
 
-      - name: Fetch GCC 11 Toolchains
+      - name: Fetch AOSP Clang Toolchain
         run: |
-          mkdir -p toolchain/gcc64 toolchain/gcc32
-          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
-          tar -xf gcc-aarch64.tar.xz --strip-components=1 -C toolchain/gcc64
-          
-          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz -O gcc-arm32.tar.xz
-          tar -xf gcc-arm32.tar.xz --strip-components=1 -C toolchain/gcc32
+          mkdir -p toolchain/clang
+          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz -O clang.tar.gz || wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz -O clang.tar.gz
+          tar -xf clang.tar.gz -C toolchain/clang
 
       - name: Fetch Utilities
         run: |
@@ -58,23 +55,27 @@ jobs:
         run: |
           rm -rf out
 
-      - name: Build Kernel Binary
+      - name: Build Kernel Binary with Clang
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           
-          CROSS_64="$(pwd)/toolchain/gcc64/bin/aarch64-none-linux-gnu-"
-          CROSS_32="$(pwd)/toolchain/gcc32/bin/arm-none-linux-gnueabihf-"
+          CLANG_PATH="$(pwd)/toolchain/clang/bin/"
+          export PATH="$CLANG_PATH:$PATH"
 
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
           make -j1 O=out \
             ARCH=arm64 \
-            CROSS_COMPILE="$CROSS_64" \
-            CROSS_COMPILE_ARM32="$CROSS_32" \
-            HOSTCC=gcc \
-            HOSTCXX=g++ \
-            KBUILD_CFLAGS="-fno-pie" \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            STRIP=llvm-strip \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
 
       - name: Assemble Final Flashable Partition Images
