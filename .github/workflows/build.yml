@@ -15,10 +15,19 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Setup Tools
+      - name: Setup Essential Host Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip gcc-multilib g++-multilib gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip
+
+      - name: Fetch Official GCC Toolchains (No Unmet Dependencies)
+        run: |
+          mkdir -p toolchain/gcc64 toolchain/gcc32
+          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz -O gcc-aarch64.tar.xz
+          tar -xf gcc-aarch64.tar.xz --strip-components=1 -C toolchain/gcc64
+          
+          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz -O gcc-arm32.tar.xz
+          tar -xf gcc-arm32.tar.xz --strip-components=1 -C toolchain/gcc32
 
       - name: Fetch Utilities
         run: |
@@ -50,12 +59,15 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
+          CROSS_64="$(pwd)/toolchain/gcc64/bin/aarch64-none-linux-gnu-"
+          CROSS_32="$(pwd)/toolchain/gcc32/bin/arm-none-linux-gnueabihf-"
+
           make O=out HOSTCC=gcc HOSTCXX=g++ vili_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_user_defconfig || make O=out HOSTCC=gcc HOSTCXX=g++ lahaina_defconfig
           
           make -j4 O=out \
             ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            CROSS_COMPILE="$CROSS_64" \
+            CROSS_COMPILE_ARM32="$CROSS_32" \
             HOSTCC=gcc \
             HOSTCXX=g++ \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
