@@ -25,7 +25,7 @@ asm_volatile_goto(
     ".long 1b - ., l_yes - . \n\t"
     ".quad %c0 \n\t"
     ".popsection \n\t"
-    : : "r"(&((char *)key)[branch]) : l_yes);
+    : : "r"(&((char *)key)[branch]) : : l_yes);
 
 	return false;
 l_yes:
@@ -42,7 +42,7 @@ asm_volatile_goto(
     ".long 1b - ., l_yes - . \n\t"
     ".quad %c0 \n\t"
     ".popsection \n\t"
-    : : "r"(&((char *)key)[branch]) : l_yes);
+    : : "r"(&((char *)key)[branch]) : : l_yes);
 
 	return false;
 l_yes:
