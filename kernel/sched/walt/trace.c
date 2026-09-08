@@ -17,9 +17,21 @@ extern unsigned long long sched_clock(void);
 extern unsigned int cpu_cycles_to_freq(u64 cycles, u64 exec_time);
 extern unsigned int sched_cpu_legacy_freq(int cpu);
 extern unsigned int cpu_max_freq(int cpu);
-extern bool sched_cpu_high_irqload(int cpu);
+
+/* Explicit function declarations to fix implicit declaration errors */
+static inline void __window_data(u32 *dst, u32 *src);
+static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
+                  bool src, bool new, bool curr);
 
 #ifndef CONFIG_SCHED_WALT
+static inline void __window_data(u32 *dst, u32 *src)
+{
+    if (src)
+        memcpy(dst, src, nr_cpu_ids * sizeof(u32));
+    else
+        memset(dst, 0, nr_cpu_ids * sizeof(u32));
+}
+#else
 static inline void __window_data(u32 *dst, u32 *src)
 {
     if (src)
@@ -84,3 +96,4 @@ static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type
 
 #define CREATE_TRACE_POINTS
 #include "trace.h"
+
