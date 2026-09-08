@@ -5,6 +5,7 @@
 
 #include "trace.h"
 #include <linux/sched.h>
+#include <linux/seq_buf.h>
 extern unsigned long long sched_clock(void);
 
 #ifdef CONFIG_SCHED_WALT
