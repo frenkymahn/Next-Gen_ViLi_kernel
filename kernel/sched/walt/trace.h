@@ -9,6 +9,7 @@
 #if !defined(_TRACE_WALT_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_WALT_H
 #include <linux/sched.h>
+#include <linux/sched/topology.h>
 extern unsigned long long sched_clock(void);
 
 #include <linux/tracepoint.h>
