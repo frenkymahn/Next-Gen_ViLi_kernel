@@ -52,7 +52,6 @@ jobs:
           CONFIG_PID_NS=y
           CONFIG_BLK_INLINE_ENCRYPTION=y
           CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y
-          # CONFIG_CC_HAS_ASM_GOTO is not set
           EOF
 
       - name: Clean Output Directory
@@ -75,7 +74,7 @@ jobs:
             CROSS_COMPILE_ARM32="$CROSS_32" \
             HOSTCC=gcc \
             HOSTCXX=g++ \
-            KBUILD_CFLAGS="-Wno-error=invalid-asm -fno-pie" \
+            KBUILD_CFLAGS="-fno-pie" \
             CONFIG_LOCALVERSION="-Next-Gen-ViLi-v1.0"
 
       - name: Assemble Final Flashable Partition Images
