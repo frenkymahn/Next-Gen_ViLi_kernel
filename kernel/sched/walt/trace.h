@@ -10,19 +10,18 @@
 #define _TRACE_WALT_H
 #include <linux/sched.h>
 #include <linux/sched/topology.h>
+#include "walt.h"
 extern unsigned long long sched_clock(void);
 
 #include <linux/tracepoint.h>
 
 #ifdef CONFIG_SCHED_WALT
-struct rq;
 struct group_cpu_time;
 extern const char *task_event_names[];
 
 /* Forward declarations or inline wrappers to fix implicit declarations */
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
-static inline bool sched_cpu_high_irqload(int cpu);
 
 TRACE_EVENT(sched_update_pred_demand,
 
