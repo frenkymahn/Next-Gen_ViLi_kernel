@@ -19,6 +19,11 @@ struct rq;
 struct group_cpu_time;
 extern const char *task_event_names[];
 
+/* Forward declarations or inline wrappers to fix implicit declarations */
+static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
+				   bool src, bool nt, bool cp);
+static inline bool sched_cpu_high_irqload(int cpu);
+
 TRACE_EVENT(sched_update_pred_demand,
 
 	TP_PROTO(struct task_struct *p, u32 runtime, int pct,
@@ -342,21 +347,21 @@ TRACE_EVENT(sched_migration_update_sum,
 		__entry->tcpu		= task_cpu(p);
 		__entry->pid		= p->pid;
 		__entry->migrate_type	= migrate_type;
-		__entry->src_cs		= __get_update_sum(rq, migrate_type,
+		__entry->src_cs		= _get_update_sum(rq, migrate_type,
 							   true, false, true);
-		__entry->src_ps		= __get_update_sum(rq, migrate_type,
+		__entry->src_ps		= _get_update_sum(rq, migrate_type,
 							   true, false, false);
-		__entry->dst_cs		= __get_update_sum(rq, migrate_type,
+		__entry->dst_cs		= _get_update_sum(rq, migrate_type,
 							   false, false, true);
-		__entry->dst_ps		= __get_update_sum(rq, migrate_type,
+		__entry->dst_ps		= _get_update_sum(rq, migrate_type,
 							   false, false, false);
-		__entry->src_nt_cs	= __get_update_sum(rq, migrate_type,
+		__entry->src_nt_cs	= _get_update_sum(rq, migrate_type,
 							   true, true, true);
-		__entry->src_nt_ps	= __get_update_sum(rq, migrate_type,
+		__entry->src_nt_ps	= _get_update_sum(rq, migrate_type,
 							   true, true, false);
-		__entry->dst_nt_cs	= __get_update_sum(rq, migrate_type,
+		__entry->dst_nt_cs	= _get_update_sum(rq, migrate_type,
 							   false, true, true);
-		__entry->dst_nt_ps	= __get_update_sum(rq, migrate_type,
+		__entry->dst_nt_ps	= _get_update_sum(rq, migrate_type,
 							   false, true, false);
 	),
 
@@ -682,3 +687,4 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
+
