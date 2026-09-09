@@ -121,7 +121,7 @@ static inline u64 sched_irqload(int cpu)
 		return 0;
 }
 
-static inline int sched_cpu_high_irqload(int cpu)
+static inline bool sched_cpu_high_irqload(int cpu)
 {
 	return cpu_rq(cpu)->wrq.high_irqload;
 }
@@ -235,7 +235,7 @@ static inline void init_new_task_load(struct task_struct *p)
 
 static inline void mark_task_starting(struct task_struct *p) { }
 static inline void set_window_start(struct rq *rq) { }
-static inline int sched_cpu_high_irqload(int cpu) { return 0; }
+static inline bool sched_cpu_high_irqload(int cpu) { return false; }
 
 static inline void sched_account_irqstart(int cpu, struct task_struct *curr,
 					  u64 wallclock)
@@ -282,3 +282,4 @@ static inline u64 get_rtgb_active_time(void)
 #endif /* CONFIG_SCHED_WALT */
 
 #endif
+
