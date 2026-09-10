@@ -23,8 +23,7 @@ jobs:
       - name: Fetch AOSP Clang Toolchain
         run: |
           mkdir -p toolchain/clang
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 toolchain/clang || \
-          wget -O clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz && tar -xf clang.tar.gz -C toolchain/clang
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 toolchain/clang
 
       - name: Fetch Utilities
         run: |
