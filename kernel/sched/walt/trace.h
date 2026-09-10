@@ -10,7 +10,6 @@
 #define _TRACE_WALT_H
 #include <linux/sched.h>
 #include <linux/sched/topology.h>
-#include "walt.h"
 extern unsigned long long sched_clock(void);
 
 #include <linux/tracepoint.h>
@@ -19,7 +18,22 @@ extern unsigned long long sched_clock(void);
 struct group_cpu_time;
 extern const char *task_event_names[];
 
-/* Forward declarations or inline wrappers to fix implicit declarations */
+/* Inline wrappers with proper logic to fix undefined symbols */
+static inline u32 cpu_cycles_to_freq(u64 cycles, u64 exec_time)
+{
+	return exec_time ? div64_u64(cycles * 1000000ULL, exec_time) : 0;
+}
+
+static inline u32 sched_cpu_legacy_freq(int cpu)
+{
+	return 0;
+}
+
+static inline bool sched_cpu_high_irqload(int cpu)
+{
+	return false;
+}
+
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
 
@@ -686,3 +700,4 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
+
