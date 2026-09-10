@@ -18,13 +18,13 @@ jobs:
       - name: Setup Essential Host Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip lld llvm
+          sudo apt-get install -y bc build-essential libc6-dev libssl-dev libelf-dev bison flex python3 openjdk-17-jdk wget zip lld llvm git
 
       - name: Fetch AOSP Clang Toolchain
         run: |
           mkdir -p toolchain/clang
-          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz -O clang.tar.gz || wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz -O clang.tar.gz
-          tar -xf clang.tar.gz -C toolchain/clang
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 toolchain/clang || \
+          wget -O clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz && tar -xf clang.tar.gz -C toolchain/clang
 
       - name: Fetch Utilities
         run: |
