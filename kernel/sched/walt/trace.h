@@ -14,11 +14,14 @@ extern unsigned long long sched_clock(void);
 
 #include <linux/tracepoint.h>
 
+#ifndef MAX_CLUSTERS
+#define MAX_CLUSTERS 3
+#endif
+
 #ifdef CONFIG_SCHED_WALT
 struct group_cpu_time;
 extern const char *task_event_names[];
 
-/* Safe inline declaration to resolve implicit declaration error */
 #ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
 #define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
 static inline bool sched_cpu_high_irqload(int cpu)
@@ -567,8 +570,8 @@ TRACE_EVENT(core_ctl_notif_data,
 	TP_fast_assign(
 		__entry->nr_big = nr_big;
 		__entry->ta_load = ta_load;
-		memcpy(__entry->ta_util, ta_util, MAX_CLUSTRES * sizeof(u32));
-		memcpy(__entry->cur_cap, cur_cap, MAX_CLUSTRES * sizeof(u32));
+		memcpy(__entry->ta_util, ta_util, MAX_CLUSTERS * sizeof(u32));
+		memcpy(__entry->cur_cap, cur_cap, MAX_CLUSTERS * sizeof(u32));
 	),
 
 	TP_printk("nr_big=%u ta_load=%u ta_util=(%u %u %u) cur_cap=(%u %u %u)",
@@ -675,7 +678,7 @@ TRACE_EVENT(walt_window_rollover,
 	TP_ARGS(window_start),
 
 	TP_STRUCT__entry(
-		__field(u64, window_sh)
+		__field(u64, window_start)
 	),
 
 	TP_fast_assign(
