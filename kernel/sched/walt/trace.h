@@ -18,6 +18,15 @@ extern unsigned long long sched_clock(void);
 struct group_cpu_time;
 extern const char *task_event_names[];
 
+/* Safe inline declaration to prevent implicit declaration error */
+#ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+#define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+static inline bool sched_cpu_high_irqload(int cpu)
+{
+	return false;
+}
+#endif
+
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
 
