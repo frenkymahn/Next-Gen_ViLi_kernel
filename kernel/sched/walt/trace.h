@@ -18,6 +18,15 @@ extern unsigned long long sched_clock(void);
 struct group_cpu_time;
 extern const char *task_event_names[];
 
+/* Safe inline declaration for high irqload */
+#ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+#define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+static inline bool sched_cpu_high_irqload(int cpu)
+{
+	return false;
+}
+#endif
+
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
 
@@ -669,7 +678,7 @@ TRACE_EVENT(walt_window_rollover,
 		__field(u64, window_start)
 	),
 
-	TP_fast_align(
+	TP_fast_assign(
 		__entry->window_start = window_start;
 	),
 
@@ -684,3 +693,4 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
+
