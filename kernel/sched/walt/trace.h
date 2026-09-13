@@ -18,6 +18,15 @@ extern unsigned long long sched_clock(void);
 struct group_cpu_time;
 extern const char *task_event_names[];
 
+/* Safe inline declaration to resolve implicit declaration error */
+#ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+#define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+static inline bool sched_cpu_high_irqload(int cpu)
+{
+	return cpu_rq(cpu)->wrq.high_irqload;
+}
+#endif
+
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
 
@@ -558,8 +567,8 @@ TRACE_EVENT(core_ctl_notif_data,
 	TP_fast_assign(
 		__entry->nr_big = nr_big;
 		__entry->ta_load = ta_load;
-		memcpy(__entry->ta_util, ta_util, MAX_CLUSTERS * sizeof(u32));
-		memcpy(__entry->cur_cap, cur_cap, MAX_CLUSTERS * sizeof(u32));
+		memcpy(__entry->ta_util, ta_util, MAX_CLUSTRES * sizeof(u32));
+		memcpy(__entry->cur_cap, cur_cap, MAX_CLUSTRES * sizeof(u32));
 	),
 
 	TP_printk("nr_big=%u ta_load=%u ta_util=(%u %u %u) cur_cap=(%u %u %u)",
@@ -666,7 +675,7 @@ TRACE_EVENT(walt_window_rollover,
 	TP_ARGS(window_start),
 
 	TP_STRUCT__entry(
-		__field(u64, window_start)
+		__field(u64, window_sh)
 	),
 
 	TP_fast_assign(
@@ -684,3 +693,4 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
+
