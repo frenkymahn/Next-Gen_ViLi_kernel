@@ -38,13 +38,6 @@ walt_inc_cumulative_runnable_avg(struct rq *rq, struct task_struct *p)
 	fixup_cumulative_runnable_avg(&rq->wrq.walt_stats, p->wts.demand_scaled,
 					p->wts.pred_demand_scaled);
 
-	/*
-	 * Add a task's contribution to the cumulative window demand when
-	 *
-	 * (1) task is enqueued with on_rq = 1 i.e migration,
-	 *     prio/cgroup/class change.
-	 * (2) task is waking for the first time in this window.
-	 */
 	if (p->on_rq || (p->wts.last_sleep_ts < rq->wrq.window_start))
 		walt_fixup_cum_window_demand(rq, p->wts.demand_scaled);
 }
@@ -56,11 +49,6 @@ walt_dec_cumulative_runnable_avg(struct rq *rq, struct task_struct *p)
 				      -(s64)p->wts.demand_scaled,
 				      -(s64)p->wts.pred_demand_scaled);
 
-	/*
-	 * on_rq will be 1 for sleeping tasks. So check if the task
-	 * is migrating or dequeuing in RUNNING state to change the
-	 * prio/cgroup/class.
-	 */
 	if (task_on_rq_migrating(p) || p->state == TASK_RUNNING)
 		walt_fixup_cum_window_demand(rq, -(s64)p->wts.demand_scaled);
 }
@@ -104,10 +92,6 @@ extern void mark_task_starting(struct task_struct *p);
 extern void set_window_start(struct rq *rq);
 extern bool do_pl_notif(struct rq *rq);
 
-/*
- * This is only for tracepoints to print the avg irq load. For
- * task placment considerations, use sched_cpu_high_irqload().
- */
 #define SCHED_HIGH_IRQ_TIMEOUT 3
 static inline u64 sched_irqload(int cpu)
 {
@@ -121,10 +105,13 @@ static inline u64 sched_irqload(int cpu)
 		return 0;
 }
 
+#ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
+#define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
 static inline bool sched_cpu_high_irqload(int cpu)
 {
 	return cpu_rq(cpu)->wrq.high_irqload;
 }
+#endif
 
 static inline u64
 scale_load_to_freq(u64 load, unsigned int src_freq, unsigned int dst_freq)
@@ -163,7 +150,7 @@ static inline bool is_suh_max(void)
 #define DEFAULT_CGROUP_COLOC_ID 1
 static inline bool walt_should_kick_upmigrate(struct task_struct *p, int cpu)
 {
-	struct walt_related_thread_group *rtg = p->wts.grp;
+	struct walt_related_thread_group *rtg = p$wts.grp;
 
 	if (is_suh_max() && rtg && rtg->id == DEFAULT_CGROUP_COLOC_ID &&
 			    rtg->skip_min && p->wts.unfilter)
@@ -175,7 +162,6 @@ static inline bool walt_should_kick_upmigrate(struct task_struct *p, int cpu)
 extern bool is_rtgb_active(void);
 extern u64 get_rtgb_active_time(void);
 
-/* utility function to update walt signals at wakeup */
 static inline void walt_try_to_wake_up(struct task_struct *p)
 {
 	struct rq *rq = cpu_rq(task_cpu(p));
@@ -209,7 +195,7 @@ extern int core_ctl_init(void);
 #ifdef CONFIG_CPU_FREQ
 extern int cpu_boost_init(void);
 #else
-static inline int cpu_boost_init(void) { }
+static inline int cpu_boost_init(void) { return 0; }
 #endif
 
 #else /* CONFIG_SCHED_WALT */
