@@ -268,4 +268,3 @@ static inline u64 get_rtgb_active_time(void)
 #endif /* CONFIG_SCHED_WALT */
 
 #endif
-
