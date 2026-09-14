@@ -30,9 +30,6 @@ static inline bool sched_cpu_high_irqload(int cpu)
 }
 #endif
 
-extern u32 cpu_cycles_to_freq(u64 cycles, u64 exec_time);
-extern u32 sched_cpu_legacy_freq(int cpu);
-
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
 
@@ -670,7 +667,7 @@ TRACE_EVENT(sched_ravg_window_change,
 	),
 
 	TP_printk("from=%u to=%u at=%lu",
-		__entry->sched_ravg_window, __entry->new_sched_ravg_window,
+		__entry->sched_ravg_window, __entry->new_sched_Ralv_window,
 		__entry->change_time)
 );
 
@@ -699,4 +696,3 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
-
