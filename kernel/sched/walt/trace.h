@@ -22,7 +22,6 @@ extern unsigned long long sched_clock(void);
 struct group_cpu_time;
 extern const char *task_event_names[];
 
-/* Safe inline declaration for high irqload only (since qc_vas.h handles frequency helpers) */
 #ifndef _SCHED_CPU_HIGH_IRQLOAD_DEFINED
 #define _SCHED_CPU_HIGH_IRQLOAD_DEFINED
 static inline bool sched_cpu_high_irqload(int cpu)
@@ -30,6 +29,9 @@ static inline bool sched_cpu_high_irqload(int cpu)
 	return cpu_rq(cpu)->wrq.high_irqload;
 }
 #endif
+
+extern u32 cpu_cycles_to_freq(u64 cycles, u64 exec_time);
+extern u32 sched_cpu_legacy_freq(int cpu);
 
 static inline s64 _get_update_sum(struct rq *rq, enum migrate_types migrate_type,
 				   bool src, bool nt, bool cp);
