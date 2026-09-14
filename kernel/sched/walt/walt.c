@@ -3860,3 +3860,13 @@ unlock:
 	mutex_unlock(&mutex);
 	return ret;
 }
+
+u32 cpu_cycles_to_freq(u64 cycles, u64 exec_time)
+{
+	return exec_time ? div64_u64(cycles * 1000000ULL, exec_time) : 0;
+}
+
+u32 sched_cpu_legacy_freq(int cpu)
+{
+	return 0;
+}
