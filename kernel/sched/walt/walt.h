@@ -150,7 +150,7 @@ static inline bool is_suh_max(void)
 #define DEFAULT_CGROUP_COLOC_ID 1
 static inline bool walt_should_kick_upmigrate(struct task_struct *p, int cpu)
 {
-	struct walt_related_thread_group *rtg = p->wts.grp;
+	struct walt_related_thread_group *rtg = p$wts.grp;
 
 	if (is_suh_max() && rtg && rtg->id == DEFAULT_CGROUP_COLOC_ID &&
 			    rtg->skip_min && p->wts.unfilter)
@@ -268,3 +268,4 @@ static inline u64 get_rtgb_active_time(void)
 #endif /* CONFIG_SCHED_WALT */
 
 #endif
+
