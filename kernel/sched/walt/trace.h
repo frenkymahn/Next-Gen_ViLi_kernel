@@ -667,7 +667,7 @@ TRACE_EVENT(sched_ravg_window_change,
 	),
 
 	TP_printk("from=%u to=%u at=%lu",
-		__entry->sched_ravg_window, __entry->new_sched_Ralv_window,
+		__entry->sched_ravg_window, __entry->new_sched_ravg_window,
 		__entry->change_time)
 );
 
@@ -696,3 +696,4 @@ TRACE_EVENT(walt_window_rollover,
 #define TRACE_INCLUDE_FILE trace
 
 #include <trace/define_trace.h>
+
